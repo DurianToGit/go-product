@@ -6,3 +6,8 @@ type Product struct {
 	Price int    `json:"price"`
 	Stock int    `json:"stock"`
 }
+
+type ListReq struct {
+	Page     int `json:"page" form:"page"`
+	PageSize int `json:"pageSize" form:"page_size"`
+}

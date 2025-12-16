@@ -6,11 +6,15 @@ import (
 )
 
 type ProductService struct {
-	repo *repository.ProductRepository
+	repo repository.ProductRepository
 }
 
-func NewProductService(repo *repository.ProductRepository) *ProductService {
-	return &ProductService{repo}
+func NewProductService(repo repository.ProductRepository) *ProductService {
+	return &ProductService{repo: repo}
+}
+
+func (s *ProductService) GetProducts(page, pageSize int) ([]*domain.Product, error) {
+	return s.repo.List(page, pageSize)
 }
 
 func (s *ProductService) CreateProduct(p *domain.Product) error {

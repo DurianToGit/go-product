@@ -18,7 +18,7 @@ func main() {
 	r := api.NewRouter(db)
 
 	log.Println("Product Service running on :8080...")
-	if err := r.Run(":8080"); err != nil {
+	if err := r.Run(":8082"); err != nil {
 		log.Fatal(err)
 	}
 }

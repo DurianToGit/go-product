@@ -12,10 +12,11 @@ import (
 func NewRouter(db *gorm.DB) *gin.Engine {
 	r := gin.Default()
 
-	repo := repository.NewProductRepository(db)
+	repo := repository.NewMysqlProductRepo(db)
 	svc := service.NewProductService(repo)
 	h := handler.NewProductHandler(svc)
 
+	r.GET("/products", h.List)
 	r.POST("/products", h.Create)
 	r.GET("/products/:id", h.Get)
 

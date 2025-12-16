@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"product-service/internal/domain"
 	"product-service/internal/service"
@@ -15,6 +16,30 @@ type ProductHandler struct {
 
 func NewProductHandler(svc *service.ProductService) *ProductHandler {
 	return &ProductHandler{svc}
+}
+
+func (h *ProductHandler) List(c *gin.Context) {
+	var req domain.ListReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	fmt.Println("参数page=", req.Page, "pageSize=", req.PageSize)
+
+	// Set defaults
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 || req.PageSize > 100 {
+		req.PageSize = 10
+	}
+
+	data, err := h.svc.GetProducts(req.Page, req.PageSize)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, data)
 }
 
 func (h *ProductHandler) Create(c *gin.Context) {
