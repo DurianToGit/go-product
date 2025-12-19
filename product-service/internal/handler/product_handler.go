@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"product-service/internal/domain"
@@ -61,8 +62,13 @@ func (h *ProductHandler) Get(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	data, err := h.svc.GetProduct(uint(id))
 
-	if err != nil {
+	if errors.Is(err, domain.ErrProductNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 

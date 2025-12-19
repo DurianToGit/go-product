@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"fmt"
 	"product-service/internal/domain"
 
@@ -46,8 +47,13 @@ func (r *MysqlProductRepo) Create(p *domain.Product) error {
 
 func (r *MysqlProductRepo) Get(id uint) (*domain.Product, error) {
 	var p domain.Product
-	err := r.db.First(&p, id).Error
-	return &p, err
+	if err := r.db.First(&p, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrProductNotFound
+		}
+		return nil, fmt.Errorf("get product: %w", err)
+	}
+	return &p, nil
 }
 
 // func (r *ProductRepository) Create(p *domain.Product) error {

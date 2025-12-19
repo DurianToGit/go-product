@@ -1,5 +1,7 @@
 package domain
 
+import "errors"
+
 type Product struct {
 	ID    uint   `json:"id" gorm:"primaryKey"`
 	Name  string `json:"name"`
@@ -11,3 +13,7 @@ type ListReq struct {
 	Page     int `json:"page" form:"page"`
 	PageSize int `json:"pageSize" form:"page_size"`
 }
+
+var (
+	ErrProductNotFound = errors.New("product not found")
+)

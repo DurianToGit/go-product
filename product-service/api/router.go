@@ -1,20 +1,12 @@
 package api
 
 import (
-	"product-service/internal/handler"
-	"product-service/internal/repository"
-	"product-service/internal/service"
-
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
+	"product-service/internal/handler"
 )
 
-func NewRouter(db *gorm.DB) *gin.Engine {
+func NewRouter(h *handler.ProductHandler) *gin.Engine {
 	r := gin.Default()
-
-	repo := repository.NewMysqlProductRepo(db)
-	svc := service.NewProductService(repo)
-	h := handler.NewProductHandler(svc)
 
 	r.GET("/products", h.List)
 	r.POST("/products", h.Create)
