@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
 	"product-service/internal/Cache"
 	"product-service/internal/domain"
@@ -9,7 +10,7 @@ import (
 	"time"
 )
 
-func LoadProductsAsync(productChan chan<- domain.Product) {
+func LoadProductsAsync(ctx context.Context, productChan chan<- domain.Product) {
 	// 模拟外部数据源
 	products := []domain.Product{
 		{ID: 1, Name: "iPhone 17 Pro", Price: 9999, Stock: 100},
@@ -18,14 +19,16 @@ func LoadProductsAsync(productChan chan<- domain.Product) {
 	}
 
 	go func() {
+		defer close(productChan)
 		for _, p := range products {
-			// time.Sleep(500 * time.Millisecond) // 模拟 IO
-			// if p.Stock == 100 {
-			// 	time.Sleep(2 * time.Second)
-			// }
-			productChan <- p
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				time.Sleep(500 * time.Millisecond)
+				productChan <- p
+			}
 		}
-		close(productChan) // 非常重要
 	}()
 }
 
@@ -33,33 +36,29 @@ func LoadProducts(src *service.ProductService) {
 	var wg sync.WaitGroup
 	cache := Cache.NewProductCache()
 	productChan := make(chan domain.Product)
-	LoadProductsAsync(productChan)
-	timeout := time.After(time.Second * 3)
-	// timeout := time.NewTimer(time.Second * 3)
-	// defer timeout.Stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	LoadProductsAsync(ctx, productChan)
+	defer cancel()
 	for {
 		select {
 		case product, ok := <-productChan:
 			if !ok {
 				wg.Wait()
 				fmt.Println("product preload done")
-				for i, v := range cache.List() {
-					fmt.Println("从缓存获取的")
-					fmt.Println(i, v.Name)
-				}
 				return
 			}
 			wg.Add(1)
-			go func(p domain.Product) {
+			go func(ctx context.Context, p domain.Product) {
 				defer wg.Done()
-				cache.Set(p)
-				// err := src.CreateProduct(&product)
-				// if err != nil {
-				// 	log.Println("Error: ", err)
-				// }
-			}(product)
-			// log.Println("Load product: ", product.Name)
-		case <-timeout:
+				select {
+				case <-ctx.Done():
+					fmt.Println("product preload timeout, skip remaining")
+					return
+				default:
+					cache.Set(p)
+				}
+			}(ctx, product)
+		case <-ctx.Done():
 			fmt.Println("product preload timeout, skip remaining")
 			return
 		}
