@@ -6,13 +6,18 @@ import (
 )
 
 type MockProductRepo struct {
-	Products map[uint]*domain.Product
+	Products map[int64]*domain.Product
 }
 
 func NewMockProductRepo() *MockProductRepo {
 	return &MockProductRepo{
-		Products: make(map[uint]*domain.Product),
+		Products: make(map[int64]*domain.Product),
 	}
+}
+
+func (m *MockProductRepo) List(page, pageSize int) ([]*domain.Product, error) {
+	// TODO implement me
+	panic("implement me")
 }
 
 func (m *MockProductRepo) Create(p *domain.Product) error {
@@ -20,7 +25,7 @@ func (m *MockProductRepo) Create(p *domain.Product) error {
 	return nil
 }
 
-func (m *MockProductRepo) Get(id uint) (*domain.Product, error) {
+func (m *MockProductRepo) Get(id int64) (*domain.Product, error) {
 	if p, ok := m.Products[id]; ok {
 		return p, nil
 	}

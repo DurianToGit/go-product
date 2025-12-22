@@ -11,7 +11,7 @@ import (
 type ProductRepository interface {
 	List(page, pageSize int) ([]*domain.Product, error)
 	Create(p *domain.Product) error
-	Get(id uint) (*domain.Product, error)
+	Get(id int64) (*domain.Product, error)
 }
 
 type MysqlProductRepo struct {
@@ -45,7 +45,7 @@ func (r *MysqlProductRepo) Create(p *domain.Product) error {
 	return r.db.Create(p).Error
 }
 
-func (r *MysqlProductRepo) Get(id uint) (*domain.Product, error) {
+func (r *MysqlProductRepo) Get(id int64) (*domain.Product, error) {
 	var p domain.Product
 	if err := r.db.First(&p, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -60,7 +60,7 @@ func (r *MysqlProductRepo) Get(id uint) (*domain.Product, error) {
 // 	return r.db.Create(p).Error
 // }
 //
-// func (r *ProductRepository) Get(id uint) (*domain.Product, error) {
+// func (r *ProductRepository) Get(id int64) (*domain.Product, error) {
 // 	var p domain.Product
 // 	err := r.db.First(&p, id).Error
 // 	return &p, err

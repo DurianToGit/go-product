@@ -22,7 +22,7 @@ func (s *ProductService) CreateProduct(p *domain.Product) error {
 	return s.repo.Create(p)
 }
 
-func (s *ProductService) GetProduct(id uint) (*domain.Product, error) {
+func (s *ProductService) GetProduct(id int64) (*domain.Product, error) {
 	return s.repo.Get(id)
 }
 

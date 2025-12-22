@@ -30,8 +30,9 @@ func Run() {
 
 	r := api.NewRouter(productHandler)
 
-	log.Println("Product Service running on :8080...")
-	if err := r.Run(":8082"); err != nil {
+	port := os.Getenv("PORT")
+	log.Printf("Product Service running on :{%d}...", port)
+	if err := r.Run(":" + port); err != nil {
 		log.Fatal(err)
 	}
 }

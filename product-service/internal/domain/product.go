@@ -3,7 +3,7 @@ package domain
 import "errors"
 
 type Product struct {
-	ID    uint   `json:"id" gorm:"primaryKey"`
+	ID    int64  `json:"id" gorm:"primaryKey"`
 	Name  string `json:"name"`
 	Price int    `json:"price"`
 	Stock int    `json:"stock"`

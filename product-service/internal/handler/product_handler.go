@@ -60,7 +60,7 @@ func (h *ProductHandler) Create(c *gin.Context) {
 
 func (h *ProductHandler) Get(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	data, err := h.svc.GetProduct(uint(id))
+	data, err := h.svc.GetProduct(int64(id))
 
 	if errors.Is(err, domain.ErrProductNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
