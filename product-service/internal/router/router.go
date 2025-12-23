@@ -1,4 +1,4 @@
-package api
+package router
 
 import (
 	"github.com/gin-gonic/gin"
@@ -13,4 +13,12 @@ func NewRouter(h *handler.ProductHandler) *gin.Engine {
 	r.GET("/products/:id", h.Get)
 
 	return r
+}
+
+func Register(r *gin.Engine) {
+	api := r.Group("/api")
+	api.GET("ping", handler.Ping)
+
+	api.GET("/products/:id", handler.GetProduct)
+	api.POST("/products", handler.CreateProduct)
 }

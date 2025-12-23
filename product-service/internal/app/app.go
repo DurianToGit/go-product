@@ -4,12 +4,12 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"os"
-	"product-service/api"
 	"product-service/internal/bootstrap"
 	"product-service/internal/config"
 	"product-service/internal/database"
 	"product-service/internal/handler"
 	"product-service/internal/repository"
+	"product-service/internal/router"
 	"product-service/internal/service"
 )
 
@@ -28,7 +28,7 @@ func Run() {
 
 	productHandler := handler.NewProductHandler(productService)
 
-	r := api.NewRouter(productHandler)
+	r := router.NewRouter(productHandler)
 
 	port := os.Getenv("PORT")
 	log.Printf("Product Service running on :{%d}...", port)

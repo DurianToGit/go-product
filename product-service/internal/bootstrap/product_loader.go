@@ -34,7 +34,7 @@ func LoadProductsAsync(ctx context.Context, productChan chan<- domain.Product) {
 
 func LoadProducts(src *service.ProductService) {
 	var wg sync.WaitGroup
-	cache := Cache.NewProductCache()
+	c := cache.NewProductCache()
 	productChan := make(chan domain.Product)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	LoadProductsAsync(ctx, productChan)
@@ -55,7 +55,7 @@ func LoadProducts(src *service.ProductService) {
 					fmt.Println("product preload timeout, skip remaining")
 					return
 				default:
-					cache.Set(p)
+					c.Set(p)
 				}
 			}(ctx, product)
 		case <-ctx.Done():
