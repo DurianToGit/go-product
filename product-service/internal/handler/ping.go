@@ -27,6 +27,7 @@ func GetProduct(c *gin.Context) {
 func CreateProduct(c *gin.Context) {
 	var req CreateProductReq
 	if err := c.ShouldBindJSON(&req); err != nil {
+		panic(err)
 		response.Error(c, 40001, err.Error())
 		return
 	}
