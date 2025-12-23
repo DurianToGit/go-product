@@ -6,8 +6,8 @@ import (
 )
 
 type CreateProductReq struct {
-	Name  string `json:"name"`
-	Price int    `json:"price"`
+	Name  string `json:"name" binding:"required"`
+	Price int    `json:"price" binding:"required,gt=0"`
 }
 
 func Ping(c *gin.Context) {
@@ -26,9 +26,7 @@ func GetProduct(c *gin.Context) {
 
 func CreateProduct(c *gin.Context) {
 	var req CreateProductReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		panic(err)
-		response.Error(c, 40001, err.Error())
+	if !BindAndValidate(c, &req) {
 		return
 	}
 	response.Success(c, req)

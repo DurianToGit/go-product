@@ -3,6 +3,7 @@ package response
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"product-service/internal/errno"
 )
 
 type Response struct {
@@ -23,5 +24,12 @@ func Error(c *gin.Context, code int, msg string) {
 	c.JSON(http.StatusOK, Response{
 		Code: code,
 		Msg:  msg,
+	})
+}
+
+func ErrorWithErrno(c *gin.Context, errno *errno.Error) {
+	c.JSON(http.StatusOK, Response{
+		Code: errno.Code,
+		Msg:  errno.Msg,
 	})
 }
