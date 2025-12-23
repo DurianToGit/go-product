@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"log"
 	"product-service/internal/middleware"
 	"product-service/internal/router"
@@ -9,6 +10,8 @@ import (
 )
 
 func main() {
+	// 加载环境变量
+	_ = godotenv.Load()
 	// 创建Gin引擎实例
 	r := gin.New()
 

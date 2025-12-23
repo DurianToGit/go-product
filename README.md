@@ -15,3 +15,20 @@
 
 ## Day 1 2025-12-12
 1. 目标
+
+## day14 2025-12-23
+### JWT鉴权体系
+* 知识点
+    * JWT 的三段式结构 \
+  ``` Header.Payload.Signature```
+      * Header：算法
+      * Payload：用户信息 + 过期时间
+      * Signature：防篡改
+  #### 服务端只信 Signature。 ####
+
+  * Authorization 为什么用 Bearer？
+  
+  标准答案：
+  
+  > RFC 标准\
+  > 便于网关、代理、中间件识别
