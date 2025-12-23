@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"product-service/internal/crawler"
 	"strings"
 	"time"
 )
@@ -17,7 +18,31 @@ func main() {
 		}
 	}*/
 	// retryWithTimeout(3, 1*time.Second)
-	test1()
+	crawlerTask()
+}
+
+func crawlerTask() {
+	titleCrawler := crawler.NewTitleCrawler(3, 2*time.Second)
+
+	urls := []string{
+		"https://a.com",
+		"https://b.com",
+		"https://c.com",
+		"https://d.com",
+		"https://3.com",
+		"https://4.com",
+		"https://5.com",
+		"https://6.com",
+		"https://7.com",
+		"https://8.com",
+		"https://9.com",
+	}
+
+	result := titleCrawler.Fetch(urls)
+
+	for url, title := range result {
+		fmt.Println(url, title)
+	}
 }
 
 func test1() {
