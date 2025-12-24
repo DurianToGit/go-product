@@ -6,18 +6,18 @@ import (
 	"os"
 	"product-service/internal/bootstrap"
 	"product-service/internal/config"
-	"product-service/internal/database"
 	"product-service/internal/handler"
 	"product-service/internal/repository"
 	"product-service/internal/router"
 	"product-service/internal/service"
+	db2 "product-service/pkg/db"
 )
 
 func Run() {
 	_ = godotenv.Load()
 
 	cfg := config.Load()
-	db := database.InitMySQL(cfg)
+	db := db2.InitMySQL(cfg)
 
 	productRepo := repository.NewMysqlProductRepo(db)
 	productService := service.NewProductService(productRepo)

@@ -10,8 +10,10 @@ func (e *Error) Error() string {
 }
 
 var (
-	OK            = &Error{Code: 0, Msg: "OK"}
-	InvalidParams = &Error{Code: 40001, Msg: "Invalid Parameter"}
-	Unauthorized  = &Error{Code: 40003, Msg: "Unauthorized"}
-	ServerError   = &Error{Code: 50000, Msg: "Internal Server Error"}
+	OK                        = &Error{Code: 0, Msg: "OK"}
+	InvalidParams             = &Error{Code: 40001, Msg: "Invalid Parameter"}
+	Unauthorized              = &Error{Code: 40003, Msg: "Unauthorized"}
+	ErrPasswordIncorrect      = &Error{Code: 40004, Msg: "Password Incorrect"}
+	ErrDatabaseNotInitialized = &Error{Code: 40005, Msg: "Database Not Initialized"}
+	ServerError               = &Error{Code: 50000, Msg: "Internal Server Error"}
 )

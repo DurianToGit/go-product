@@ -4,9 +4,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"log"
+	"product-service/internal/config"
 	"product-service/internal/middleware"
 	"product-service/internal/router"
 	"product-service/internal/validator"
+	"product-service/pkg/db"
 )
 
 func main() {
@@ -17,11 +19,15 @@ func main() {
 
 	// 注册中间件：日志、耗时统计、异常恢复
 	r.Use(
-		middleware.Logger(),   // 日志中间件：记录请求日志
-		middleware.Cost(),     // 耗时中间件：统计请求处理时间
-		middleware.Recovery(), // 恢复中间件：捕获panic并恢复
+		middleware.Logger(), // 日志中间件：记录请求日志
+		middleware.Cost(),   // 耗时中间件：统计请求处理时间
+		// middleware.Recovery(), // 恢复中间件：捕获panic并恢复
 	)
+	// 初始化验证器
 	validator.Init()
+	// 初始化数据库连接
+	cfg := config.Load()
+	db.InitMySQL(cfg)
 	// 注册路由：将所有API路由注册到引擎
 	router.Register(r)
 

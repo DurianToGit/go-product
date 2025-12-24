@@ -1,4 +1,4 @@
-package database
+package db
 
 import (
 	"fmt"
@@ -7,6 +7,8 @@ import (
 	"log"
 	"product-service/internal/config"
 )
+
+var DB *gorm.DB
 
 func InitMySQL(cfg config.Config) *gorm.DB {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
@@ -17,11 +19,12 @@ func InitMySQL(cfg config.Config) *gorm.DB {
 		cfg.DBName,
 	)
 	fmt.Println(dsn)
+	var err error
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("failed to connect database", err)
 	}
-
-	return db
+	log.Println("DB connected!")
+	return DB
 }
