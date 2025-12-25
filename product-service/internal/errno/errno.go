@@ -15,5 +15,11 @@ var (
 	Unauthorized              = &Error{Code: 40003, Msg: "Unauthorized"}
 	ErrPasswordIncorrect      = &Error{Code: 40004, Msg: "Password Incorrect"}
 	ErrDatabaseNotInitialized = &Error{Code: 40005, Msg: "Database Not Initialized"}
-	ServerError               = &Error{Code: 50000, Msg: "Internal Server Error"}
+	ErrUserNotFound           = &Error{Code: 40006, Msg: "User Not Found"}
+	OldPasswordIncorrect      = &Error{Code: 40007, Msg: "Old Password Incorrect"}
+	ErrDataNotFound           = &Error{Code: 40008, Msg: "Data Not Found"}
+
+	ProductErrNoEnoughStock = &Error{Code: 40101, Msg: "No Enough Stock"}
+
+	ServerError = &Error{Code: 50000, Msg: "Internal Server Error"}
 )

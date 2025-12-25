@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+	"errors"
 	"product-service/internal/domain"
 	"product-service/internal/repository"
 	"time"
@@ -14,16 +16,41 @@ func NewProductService(repo repository.ProductRepository) *ProductService {
 	return &ProductService{repo: repo}
 }
 
-func (s *ProductService) GetProducts(page, pageSize int) ([]*domain.Product, error) {
-	return s.repo.List(page, pageSize)
+func (s *ProductService) GetProducts(ctx context.Context, page, pageSize int) ([]*domain.Product, error) {
+	return s.repo.List(ctx, page, pageSize)
 }
 
-func (s *ProductService) CreateProduct(p *domain.Product) error {
-	return s.repo.Create(p)
+func (s *ProductService) CreateProduct(ctx context.Context, p *domain.Product) error {
+	return s.repo.Create(ctx, p)
 }
 
-func (s *ProductService) GetProduct(id int64) (*domain.Product, error) {
-	return s.repo.Get(id)
+func (s *ProductService) GetProduct(ctx context.Context, id int64) (*domain.Product, error) {
+	return s.repo.Get(ctx, id)
+}
+
+func (s *ProductService) DeductStock(ctx context.Context, productId int64, count int64) error {
+	if count <= 0 {
+		return errors.New("invalid stock count")
+	}
+	return s.repo.DeductStock(ctx, productId, count)
+}
+
+func (s *ProductService) DeductStockOptimistic(ctx context.Context, productId int64, count int64) error {
+	if count <= 0 {
+		return errors.New("invalid stock count")
+	}
+	// 加入重试机制
+	const maxRetry = 3
+	for i := 0; i < maxRetry; i++ {
+		ok, err := s.repo.DeductStockOptimistic(ctx, productId, count)
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
+	}
+	return errors.New("stock not enough or retry limit reached")
 }
 
 func (s *ProductService) ValidateAsync(p *domain.Product) error {

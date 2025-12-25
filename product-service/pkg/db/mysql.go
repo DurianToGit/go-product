@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"product-service/internal/config"
+	"time"
 )
 
 var DB *gorm.DB
@@ -25,6 +26,15 @@ func InitMySQL(cfg config.Config) *gorm.DB {
 	if err != nil {
 		log.Fatal("failed to connect database", err)
 	}
-	log.Println("DB connected!")
+
+	sqlDB, err := DB.DB()
+	if err != nil {
+		log.Fatal(err)
+	}
+	// 连接池参数（必须会解释）
+	sqlDB.SetMaxOpenConns(50)           // 连接池最大连接数
+	sqlDB.SetMaxIdleConns(10)           // 连接池最大空闲数
+	sqlDB.SetConnMaxLifetime(time.Hour) // 连接池最大生命周期, 防止 MySQL 主动断开连接, 防止连接长期复用导致异常
+
 	return DB
 }

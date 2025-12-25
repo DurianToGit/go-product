@@ -1,19 +1,15 @@
 package domain
 
-import "errors"
-
 type Product struct {
-	ID    int64  `json:"id" gorm:"primaryKey"`
-	Name  string `json:"name"`
-	Price int    `json:"price"`
-	Stock int    `json:"stock"`
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	Price     int64  `json:"price"`
+	Stock     int64  `json:"stock"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 type ListReq struct {
-	Page     int `json:"page" form:"page"`
-	PageSize int `json:"pageSize" form:"page_size"`
+	Page     int `form:"page" json:"page" binding:"omitempty,min=1"`
+	PageSize int `form:"page_size" json:"page_size" binding:"omitempty,min=1,max=100"`
 }
-
-var (
-	ErrProductNotFound = errors.New("product not found")
-)

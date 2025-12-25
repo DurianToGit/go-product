@@ -4,9 +4,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"log"
+	"product-service/api/handler"
 	"product-service/internal/config"
 	"product-service/internal/middleware"
+	"product-service/internal/repository/mysql"
 	"product-service/internal/router"
+	"product-service/internal/service"
 	"product-service/internal/validator"
 	"product-service/pkg/db"
 )
@@ -27,9 +30,14 @@ func main() {
 	validator.Init()
 	// 初始化数据库连接
 	cfg := config.Load()
-	db.InitMySQL(cfg)
+	db2 := db.InitMySQL(cfg)
+
+	productRepo := mysql.NewProductRepository(db2)
+	productService := service.NewProductService(productRepo)
+	productHandler := handler.NewProductHandler(productService)
 	// 注册路由：将所有API路由注册到引擎
-	router.Register(r)
+	group := router.Register(r)
+	router.InitProductRouter(group, productHandler)
 
 	// 启动HTTP服务器，监听8082端口
 	// 如果启动失败，则记录致命错误并退出程序
