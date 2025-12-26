@@ -10,7 +10,8 @@ type ProductModel struct {
 	Name      string `gorm:"size:128;not null"`
 	Price     int64  `gorm:"not null"`
 	Stock     int64  `gorm:"not null"`
-	Version   int64  `gorm:"not null"`
+	Version   int    `gorm:"not null"`
+	Status    int    `gorm:"not null"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

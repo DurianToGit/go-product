@@ -2,8 +2,8 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"product-service/internal/domain"
+	"product-service/internal/dto"
 	"product-service/internal/errno"
 	"product-service/internal/response"
 	"product-service/internal/service"
@@ -11,6 +11,26 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+type ProductQuery struct {
+	Keyword  string `form:"keyword" json:"keyword"`
+	MinPrice *int64 `form:"min_price" json:"min_price"`
+	MaxPrice *int64 `form:"max_price" json:"max_price"`
+	Status   int    `form:"status" json:"status"`
+	Page     int    `form:"page" json:"page" binding:"omitempty,min=1"`
+	PageSize int    `form:"page_size" json:"page_size" binding:"omitempty,min=1,max=100"`
+}
+
+func (p *ProductQuery) ToDto() *dto.ProductQuery {
+	return &dto.ProductQuery{
+		Keyword:  p.Keyword,
+		MinPrice: p.MinPrice,
+		MaxPrice: p.MaxPrice,
+		Status:   p.Status,
+		Page:     p.Page,
+		PageSize: p.PageSize,
+	}
+}
 
 type ProductHandler struct {
 	svc *service.ProductService
@@ -21,26 +41,24 @@ func NewProductHandler(svc *service.ProductService) *ProductHandler {
 }
 
 func (h *ProductHandler) List(c *gin.Context) {
-	var req domain.ListReq
+	var req ProductQuery
 	if !BindAndValidateByQuery(c, &req) {
 		return
 	}
-	fmt.Println("参数page=", req.Page, ";pageSize=", req.PageSize)
+	q := req.ToDto()
 
-	// Set defaults
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 || req.PageSize > 100 {
-		req.PageSize = 10
-	}
-
-	data, err := h.svc.GetProducts(c, req.Page, req.PageSize)
+	data, total, err := h.svc.GetProducts(c, q)
 	if err != nil {
 		response.ErrorWithErrno(c, errno.ServerError)
 		return
 	}
-	response.Success(c, data)
+	result := response.ResultData{
+		List:     data,
+		Total:    total,
+		Page:     req.Page,
+		PageSize: req.PageSize,
+	}
+	response.Success(c, result)
 }
 
 func (h *ProductHandler) Create(c *gin.Context) {

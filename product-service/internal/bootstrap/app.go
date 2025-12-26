@@ -24,6 +24,7 @@ func InitApp() *App {
 	cfg := config.Load()
 	mySQL := db.InitMySQL(cfg.DB)
 	productRepo := mysql.NewProductRepository(mySQL)
+
 	productService := service.NewProductService(productRepo)
 	productHandler := handler.NewProductHandler(productService)
 

@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"product-service/internal/domain"
+	"product-service/internal/dto"
 	"product-service/internal/errno"
 	"product-service/internal/repository/mysql/model"
 )
@@ -19,26 +20,47 @@ func NewProductRepository(db *gorm.DB) *ProductRepository {
 	return &ProductRepository{db: db}
 }
 
-func (r *ProductRepository) List(ctx context.Context, page, pageSize int) ([]*domain.Product, error) {
-	fmt.Println("参数page=", page, "pageSize=", pageSize)
-	if page < 1 {
+func (r *ProductRepository) List(ctx context.Context, q *dto.ProductQuery) ([]*domain.Product, int64, error) {
+	var (
+		list  []*model.ProductModel
+		total int64
+	)
+	page := q.Page
+	pageSize := q.PageSize
+
+	if page <= 0 {
 		page = 1
 	}
-	if pageSize < 1 {
-		pageSize = 10
+	if pageSize <= 0 || pageSize > 100 {
+		pageSize = 20
 	}
 
-	var list []*model.ProductModel
-	err := r.db.WithContext(ctx).Limit(pageSize).Offset((page - 1) * pageSize).Find(&list).Error
+	offset := (page - 1) * pageSize
+
+	db := r.db.WithContext(ctx).Model(&model.ProductModel{})
+	if q.Keyword != "" {
+		db = db.Where("name LIKE ?", "%"+q.Keyword+"%")
+	}
+	if q.Status != 0 {
+		db = db.Where("status = ?", q.Status)
+	}
+	if q.MinPrice != nil {
+		db = db.Where("price >= ?", *q.MinPrice)
+	}
+	if q.MaxPrice != nil {
+		db = db.Where("price <= ?", *q.MaxPrice)
+	}
+	db.Count(&total)
+	err := db.Order("id DESC").Limit(pageSize).Offset(offset).Find(&list).Error
 	if err != nil {
 		// Consider using structured logging instead of fmt.Println
-		return nil, err
+		return nil, 0, err
 	}
 	result := make([]*domain.Product, len(list))
 	for i, p := range list {
 		result[i] = toDomain(p)
 	}
-	return result, nil
+	return result, total, nil
 }
 
 func (r *ProductRepository) Create(ctx context.Context, p *domain.Product) error {

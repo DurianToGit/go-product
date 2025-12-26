@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"product-service/internal/domain"
+	"product-service/internal/dto"
 	"product-service/internal/repository"
 	"time"
 )
@@ -16,8 +17,8 @@ func NewProductService(repo repository.ProductRepository) *ProductService {
 	return &ProductService{repo: repo}
 }
 
-func (s *ProductService) GetProducts(ctx context.Context, page, pageSize int) ([]*domain.Product, error) {
-	return s.repo.List(ctx, page, pageSize)
+func (s *ProductService) GetProducts(ctx context.Context, q *dto.ProductQuery) ([]*domain.Product, int64, error) {
+	return s.repo.List(ctx, q)
 }
 
 func (s *ProductService) CreateProduct(ctx context.Context, p *domain.Product) error {
