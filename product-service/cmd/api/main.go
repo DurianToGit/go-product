@@ -2,46 +2,30 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"log"
-	"product-service/api/handler"
-	"product-service/internal/config"
+	"product-service/internal/bootstrap"
 	"product-service/internal/middleware"
-	"product-service/internal/repository/mysql"
 	"product-service/internal/router"
-	"product-service/internal/service"
-	"product-service/internal/validator"
-	"product-service/pkg/db"
 )
 
 func main() {
-	// 加载环境变量
-	_ = godotenv.Load()
+
+	app := bootstrap.InitApp()
 	// 创建Gin引擎实例
 	r := gin.New()
-
 	// 注册中间件：日志、耗时统计、异常恢复
 	r.Use(
-		middleware.Logger(), // 日志中间件：记录请求日志
-		middleware.Cost(),   // 耗时中间件：统计请求处理时间
-		// middleware.Recovery(), // 恢复中间件：捕获panic并恢复
+		middleware.Logger(),   // 日志中间件：记录请求日志
+		middleware.Cost(),     // 耗时中间件：统计请求处理时间
+		middleware.Recovery(), // 恢复中间件：捕获panic并恢复
 	)
-	// 初始化验证器
-	validator.Init()
-	// 初始化数据库连接
-	cfg := config.Load()
-	db2 := db.InitMySQL(cfg)
 
-	productRepo := mysql.NewProductRepository(db2)
-	productService := service.NewProductService(productRepo)
-	productHandler := handler.NewProductHandler(productService)
 	// 注册路由：将所有API路由注册到引擎
-	group := router.Register(r)
-	router.InitProductRouter(group, productHandler)
+	router.Register(r, app)
 
-	// 启动HTTP服务器，监听8082端口
+	// 启动HTTP服务器
 	// 如果启动失败，则记录致命错误并退出程序
-	if err := r.Run(":8082"); err != nil {
+	if err := r.Run(app.Config.App.Addr); err != nil {
 		log.Fatalln(err)
 	}
 }

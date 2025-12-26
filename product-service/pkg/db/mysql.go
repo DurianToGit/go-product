@@ -11,7 +11,7 @@ import (
 
 var DB *gorm.DB
 
-func InitMySQL(cfg config.Config) *gorm.DB {
+func InitMySQL(cfg config.DBConfig) *gorm.DB {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.DBUser,
 		cfg.DBPass,

@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 	"product-service/api/handler"
+	"product-service/internal/bootstrap"
 	"product-service/internal/middleware"
 )
 
@@ -16,7 +17,7 @@ func NewRouter(h *handler.ProductHandler) *gin.Engine {
 	return r
 }
 
-func Register(r *gin.Engine) *gin.RouterGroup {
+func Register(r *gin.Engine, app *bootstrap.App) {
 	api := r.Group("/api")
 	api.GET("ping", handler.Ping)
 
@@ -33,9 +34,5 @@ func Register(r *gin.Engine) *gin.RouterGroup {
 		authApi.PUT("update_password", handler.UpdatePassword)
 	}
 
-	// productApi := api.Group("/products")
-	// productApi.GET("/:id", handler.GetProduct)
-	// productApi.POST("/", handler.CreateProduct)
-	// productApi.GET("/deduct", handler.DeductStock)
-	return api
+	InitProductRouter(api, app.ProductHandler)
 }
