@@ -12,23 +12,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type ProductQuery struct {
-	Keyword  string `form:"keyword" json:"keyword"`
-	MinPrice *int64 `form:"min_price" json:"min_price"`
-	MaxPrice *int64 `form:"max_price" json:"max_price"`
-	Status   int    `form:"status" json:"status"`
-	Page     int    `form:"page" json:"page" binding:"omitempty,min=1"`
-	PageSize int    `form:"page_size" json:"page_size" binding:"omitempty,min=1,max=100"`
+type ProductReq struct {
+	Keyword         string `form:"keyword" json:"keyword"`
+	CreatorUsername string `form:"creator_username" json:"creator_username"`
+	MinPrice        *int64 `form:"min_price" json:"min_price"`
+	MaxPrice        *int64 `form:"max_price" json:"max_price"`
+	Status          *int   `form:"status" json:"status"`
+	Page            int    `form:"page" json:"page" binding:"omitempty,min=1"`
+	PageSize        int    `form:"page_size" json:"page_size" binding:"omitempty,min=1,max=100"`
 }
 
-func (p *ProductQuery) ToDto() *dto.ProductQuery {
+func (p *ProductReq) ToDto() *dto.ProductQuery {
 	return &dto.ProductQuery{
-		Keyword:  p.Keyword,
-		MinPrice: p.MinPrice,
-		MaxPrice: p.MaxPrice,
-		Status:   p.Status,
-		Page:     p.Page,
-		PageSize: p.PageSize,
+		Keyword:         p.Keyword,
+		CreatorUsername: p.CreatorUsername,
+		MinPrice:        p.MinPrice,
+		MaxPrice:        p.MaxPrice,
+		Status:          p.Status,
+		Page:            p.Page,
+		PageSize:        p.PageSize,
 	}
 }
 
@@ -41,7 +43,7 @@ func NewProductHandler(svc *service.ProductService) *ProductHandler {
 }
 
 func (h *ProductHandler) List(c *gin.Context) {
-	var req ProductQuery
+	var req ProductReq
 	if !BindAndValidateByQuery(c, &req) {
 		return
 	}
@@ -76,8 +78,12 @@ func (h *ProductHandler) Create(c *gin.Context) {
 }
 
 func (h *ProductHandler) Get(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	data, err := h.svc.GetProduct(c, int64(id))
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.ErrorWithErrno(c, errno.InvalidParams)
+		return
+	}
+	data, err := h.svc.GetProduct(c, id)
 
 	if errors.Is(err, errno.ErrDataNotFound) {
 		response.ErrorWithErrno(c, errno.ErrDataNotFound)
@@ -92,11 +98,44 @@ func (h *ProductHandler) Get(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func (h *ProductHandler) DuctStock(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	count, _ := strconv.Atoi(c.Query("count"))
-	err := h.svc.DeductStock(c, int64(id), int64(count))
+func (h *ProductHandler) GetWithCreator(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
+		response.ErrorWithErrno(c, errno.InvalidParams)
+		return
+	}
+	product, user, err := h.svc.GetProductWithCreator(c, id)
+	if errors.Is(err, errno.ErrDataNotFound) {
+		response.ErrorWithErrno(c, errno.ErrDataNotFound)
+		return
+	}
+	if err != nil {
+		response.Error(c, 40001, err.Error())
+		return
+	}
+	response.Success(c, gin.H{
+		"product": product,
+		"user":    user,
+	})
+}
+
+func (h *ProductHandler) DuctStock(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.ErrorWithErrno(c, errno.InvalidParams)
+		return
+	}
+	count, err := strconv.ParseInt(c.Query("count"), 10, 64)
+	if err != nil {
+		response.ErrorWithErrno(c, errno.InvalidParams)
+		return
+	}
+	err = h.svc.DeductStock(c, id, count)
+	if err != nil {
+		if errors.Is(err, errno.ProductErrInvalidStock) {
+			response.ErrorWithErrno(c, errno.ProductErrInvalidStock)
+			return
+		}
 		response.Error(c, 40000, "DeductStock Failed")
 		return
 	}
@@ -108,6 +147,14 @@ func (h *ProductHandler) DuctStockOptimistic(c *gin.Context) {
 	count, _ := strconv.Atoi(c.Query("count"))
 	err := h.svc.DeductStockOptimistic(c, int64(id), int64(count))
 	if err != nil {
+		if errors.Is(err, errno.ProductErrInvalidStock) {
+			response.ErrorWithErrno(c, errno.ProductErrInvalidStock)
+		}
+		if errors.Is(err, errno.ProductErrStockNotEnough) {
+			response.ErrorWithErrno(c, errno.ProductErrStockNotEnough)
+			return
+		}
+
 		response.Error(c, 40000, "DeductStock Failed")
 		return
 	}

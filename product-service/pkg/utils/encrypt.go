@@ -40,8 +40,8 @@ func generateRandomSalt() string {
 }
 
 // VerifyPassword 验证密码是否正确
-func VerifyPassword(password, hash string) bool {
-	parts := strings.Split(hash, "$")
+func VerifyPassword(password, hashPassword string) bool {
+	parts := strings.Split(hashPassword, "$")
 	if len(parts) != 2 {
 		return false
 	}
@@ -61,4 +61,3 @@ func VerifyPassword(password, hash string) bool {
 
 	return subtle.ConstantTimeCompare(expectedHash, actualHash) == 1
 }
-

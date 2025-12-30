@@ -11,8 +11,9 @@ import (
 )
 
 type App struct {
-	ProductHandler *handler.ProductHandler
 	Config         *config.Config
+	UserHandler    *handler.UserHandler
+	ProductHandler *handler.ProductHandler
 }
 
 func InitApp() *App {
@@ -23,13 +24,20 @@ func InitApp() *App {
 	// 加载配置
 	cfg := config.Load()
 	mySQL := db.InitMySQL(cfg.DB)
-	productRepo := mysql.NewProductRepository(mySQL)
 
+	// 初始化用户服务
+	userRepo := mysql.NewUserRepository(mySQL)
+	userService := service.NewUserService(userRepo)
+	userHandler := handler.NewUserHandler(userService)
+
+	// 初始化商品服务
+	productRepo := mysql.NewProductRepository(mySQL)
 	productService := service.NewProductService(productRepo)
 	productHandler := handler.NewProductHandler(productService)
 
 	return &App{
-		ProductHandler: productHandler,
 		Config:         cfg,
+		UserHandler:    userHandler,
+		ProductHandler: productHandler,
 	}
 }

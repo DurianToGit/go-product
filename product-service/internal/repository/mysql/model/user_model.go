@@ -3,19 +3,16 @@ package model
 import (
 	"product-service/pkg/db"
 	"product-service/pkg/utils"
-	"time"
 )
 
 type UserModel struct {
-	ID        int64  `gorm:"primaryKey"`
-	Username  string `gorm:"unique"`
-	Password  string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	BaseModel
+	Username string `gorm:"type:varchar(64);not null;uniqueIndex:uk_username"`
+	Password string `gorm:"type:varchar(255);not null"`
 }
 
 func (UserModel) TableName() string {
-	return "user"
+	return "users"
 }
 
 func (u *UserModel) Create() error {

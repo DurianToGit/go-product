@@ -10,16 +10,25 @@ func (e *Error) Error() string {
 }
 
 var (
-	OK                        = &Error{Code: 0, Msg: "OK"}
-	InvalidParams             = &Error{Code: 40001, Msg: "Invalid Parameter"}
-	Unauthorized              = &Error{Code: 40003, Msg: "Unauthorized"}
-	ErrPasswordIncorrect      = &Error{Code: 40004, Msg: "Password Incorrect"}
-	ErrDatabaseNotInitialized = &Error{Code: 40005, Msg: "Database Not Initialized"}
-	ErrUserNotFound           = &Error{Code: 40006, Msg: "User Not Found"}
-	OldPasswordIncorrect      = &Error{Code: 40007, Msg: "Old Password Incorrect"}
-	ErrDataNotFound           = &Error{Code: 40008, Msg: "Data Not Found"}
+	OK            = &Error{Code: 0, Msg: "OK"}
+	InvalidParams = &Error{Code: 40001, Msg: "Invalid Parameter"}
+	Unauthorized  = &Error{Code: 40003, Msg: "Unauthorized"}
+
+	ErrDataNotFound = &Error{Code: 40008, Msg: "Data Not Found"}
 
 	ProductErrNoEnoughStock = &Error{Code: 40101, Msg: "No Enough Stock"}
+	// 产品名称不能为空
+	ProductErrNameEmpty = &Error{Code: 40102, Msg: "Product Name Empty"}
+	// invalid stock count
+	ProductErrInvalidStock = &Error{Code: 40103, Msg: "Invalid Stock Count"}
+	// stock not enough or retry limit reached
+	ProductErrStockNotEnough = &Error{Code: 40104, Msg: "stock not enough or retry limit reached"}
+
+	UsernameAlreadyExist     = &Error{Code: 40201, Msg: "Username Already Exist"}
+	UsernameNotFound         = &Error{Code: 40202, Msg: "Username Not Found"}
+	UserOldPasswordIncorrect = &Error{Code: 40203, Msg: "Old Password Incorrect"}
+	UserErrPasswordIncorrect = &Error{Code: 40204, Msg: "Password Incorrect"}
+	UserErrNotFound          = &Error{Code: 40006, Msg: "User Not Found"}
 
 	ServerError = &Error{Code: 50000, Msg: "Internal Server Error"}
 )

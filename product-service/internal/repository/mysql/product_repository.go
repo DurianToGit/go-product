@@ -38,20 +38,24 @@ func (r *ProductRepository) List(ctx context.Context, q *dto.ProductQuery) ([]*d
 	offset := (page - 1) * pageSize
 
 	db := r.db.WithContext(ctx).Model(&model.ProductModel{})
+	db = db.Preload("Creator")
 	if q.Keyword != "" {
-		db = db.Where("name LIKE ?", "%"+q.Keyword+"%")
+		db = db.Where("products.name LIKE ?", "%"+q.Keyword+"%")
 	}
-	if q.Status != 0 {
-		db = db.Where("status = ?", q.Status)
+	if q.CreatorUsername != "" {
+		db = db.Joins("Creator").Where("Creator.username LIKE ?", "%"+q.CreatorUsername+"%")
+	}
+	if q.Status != nil {
+		db = db.Where("products.status = ?", *q.Status)
 	}
 	if q.MinPrice != nil {
-		db = db.Where("price >= ?", *q.MinPrice)
+		db = db.Where("products.price >= ?", *q.MinPrice)
 	}
 	if q.MaxPrice != nil {
-		db = db.Where("price <= ?", *q.MaxPrice)
+		db = db.Where("products.price <= ?", *q.MaxPrice)
 	}
 	db.Count(&total)
-	err := db.Order("id DESC").Limit(pageSize).Offset(offset).Find(&list).Error
+	err := db.Order("products.id DESC").Limit(pageSize).Offset(offset).Find(&list).Error
 	if err != nil {
 		// Consider using structured logging instead of fmt.Println
 		return nil, 0, err
@@ -81,17 +85,6 @@ func (r *ProductRepository) Get(ctx context.Context, id int64) (*domain.Product,
 		return nil, fmt.Errorf("get product: %w", err)
 	}
 	return toDomain(&p), nil
-}
-
-func toDomain(m *model.ProductModel) *domain.Product {
-	return &domain.Product{
-		ID:        m.ID,
-		Name:      m.Name,
-		Price:     m.Price,
-		Stock:     m.Stock,
-		CreatedAt: m.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt: m.UpdatedAt.Format("2006-01-02 15:04:05"),
-	}
 }
 
 func (r *ProductRepository) DeductStock(ctx context.Context, productId int64, count int64) error {
@@ -152,4 +145,36 @@ func (r *ProductRepository) DeductStockOptimistic(ctx context.Context, productId
 	}
 
 	return true, nil
+}
+
+func (r *ProductRepository) GetWithCreator(ctx context.Context, id int64) (*domain.Product, *domain.User, error) {
+	var m model.ProductModel
+	err := r.db.WithContext(ctx).
+		Preload("Creator").
+		First(&m, id).Error
+	if err != nil {
+		return nil, nil, err
+	}
+
+	p := toDomain(&m)
+	u := toUserDomain(&m.Creator)
+	return p, u, nil
+}
+
+func toDomain(m *model.ProductModel) *domain.Product {
+	return &domain.Product{
+		ID:        m.ID,
+		Name:      m.Name,
+		Price:     m.Price,
+		Stock:     m.Stock,
+		CreatedAt: m.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt: m.UpdatedAt.Format("2006-01-02 15:04:05"),
+	}
+}
+
+func toUserDomain(c *model.UserModel) *domain.User {
+	return &domain.User{
+		ID:       c.ID,
+		Username: c.Username,
+	}
 }
