@@ -4,6 +4,7 @@ import (
 	"context"
 	"gorm.io/gorm"
 	"product-service/internal/domain"
+	"product-service/internal/dto"
 	"product-service/internal/errno"
 	"product-service/internal/repository/mysql/model"
 	"product-service/pkg/utils"
@@ -40,7 +41,7 @@ func (r *UserRepository) Login(ctx context.Context, username string, password st
 	if err != nil {
 		return nil, err
 	}
-	if !user.CheckPassword(password) {
+	if !utils.VerifyPassword(password, user.Password) {
 		return nil, errno.UserErrPasswordIncorrect
 	}
 	return toUserDomain(&user), nil
@@ -78,4 +79,60 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, username string, ol
 	}
 	newPassword = utils.HashPassword(newPassword)
 	return r.db.WithContext(ctx).Model(&user).Update("password", newPassword).Error
+}
+
+func (r *UserRepository) List(ctx context.Context, query *dto.UserQuery) ([]*domain.User, int64, error) {
+	var (
+		list  []*model.UserModel
+		total int64
+	)
+	page := query.Page
+	pageSize := query.PageSize
+
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 || pageSize > 100 {
+		pageSize = 20
+	}
+	offset := (page - 1) * pageSize
+	db := r.db.WithContext(ctx).Model(&model.UserModel{})
+	if query.Keyword != "" {
+		db = db.Where("username like ?", "%"+query.Keyword+"%")
+	}
+	if query.Status != nil {
+		db = db.Where("status = ?", *query.Status)
+	}
+	db.Count(&total)
+	err := db.Order("id DESC").Limit(pageSize).Offset(offset).Find(&list).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	result := make([]*domain.User, len(list))
+	for i, p := range list {
+		result[i] = toUserDomain(p)
+	}
+
+	return result, total, err
+}
+
+func (r *UserRepository) Update(ctx context.Context, userId int64, req *dto.UserUpdate) error {
+	user := map[string]any{}
+	if req.Username != nil {
+		user["username"] = *req.Username
+	}
+	if req.Password != nil {
+		user["password"] = utils.HashPassword(*req.Password)
+	}
+	if len(user) == 0 {
+		return nil
+	}
+	tx := r.db.WithContext(ctx).Model(&model.UserModel{}).Where("id = ?", userId).Updates(user)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return errno.UserErrNotFound
+	}
+	return nil
 }

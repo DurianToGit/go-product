@@ -174,7 +174,9 @@ func toDomain(m *model.ProductModel) *domain.Product {
 
 func toUserDomain(c *model.UserModel) *domain.User {
 	return &domain.User{
-		ID:       c.ID,
-		Username: c.Username,
+		ID:        c.ID,
+		Username:  c.Username,
+		CreatedAt: c.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt: c.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}
 }

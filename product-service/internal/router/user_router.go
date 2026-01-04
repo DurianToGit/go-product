@@ -7,13 +7,15 @@ import (
 )
 
 func InitUserRouter(r *gin.RouterGroup, h *handler.UserHandler) {
-	group := r.Group("user")
+	group := r.Group("users")
 	{
 		group.POST("register", h.Register)
 		group.POST("login", h.Login)
 		group.GET("userinfo", h.UserInfo)
+		group.GET("", h.List)
+		group.PATCH("/:id", h.Update)
 	}
-	authGroup := r.Group("user")
+	authGroup := r.Group("users")
 	authGroup.Use(middleware.Auth())
 	{
 		authGroup.GET("profile", h.Profile)

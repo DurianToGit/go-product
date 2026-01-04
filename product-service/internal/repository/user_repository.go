@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"product-service/internal/domain"
+	"product-service/internal/dto"
 	"product-service/internal/repository/mysql/model"
 )
 
@@ -12,4 +13,6 @@ type UserRepository interface {
 	GetByUsername(ctx context.Context, username string) (*domain.User, error)
 	GetByUserId(ctx context.Context, userId int64) (*domain.User, error)
 	UpdatePassword(ctx context.Context, username, oldPassword, newPassword string) error
+	List(ctx context.Context, query *dto.UserQuery) ([]*domain.User, int64, error)
+	Update(ctx context.Context, userId int64, user *dto.UserUpdate) error
 }

@@ -12,7 +12,6 @@ type ProductModel struct {
 	Price     int64     `gorm:"not null;default:0"`
 	Stock     int64     `gorm:"not null;default:0"`
 	Version   int       `gorm:"not null;default:1"`
-	Status    int       `gorm:"not null;default:1;index:idx_status"`
 	CreatorID int64     `gorm:"not null;index:idx_creator_id"`
 	Creator   UserModel `gorm:"foreignKey:CreatorID;references:ID"`
 }

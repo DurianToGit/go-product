@@ -10,7 +10,7 @@ func (e *Error) Error() string {
 }
 
 var (
-	OK            = &Error{Code: 0, Msg: "OK"}
+	OK            = &Error{Code: 0, Msg: "success"}
 	InvalidParams = &Error{Code: 40001, Msg: "Invalid Parameter"}
 	Unauthorized  = &Error{Code: 40003, Msg: "Unauthorized"}
 
