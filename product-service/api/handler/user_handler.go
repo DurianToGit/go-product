@@ -7,7 +7,10 @@ import (
 	"product-service/internal/errno"
 	"product-service/internal/response"
 	"product-service/internal/service"
+	"product-service/pkg/redis"
+	"product-service/pkg/rediskeys"
 	"strconv"
+	"time"
 )
 
 type UserHandler struct {
@@ -79,6 +82,9 @@ func (h *UserHandler) Login(c *gin.Context) {
 		response.ErrorWithErrno(c, errno.ServerError)
 		return
 	}
+	key := rediskeys.DailyLoginKey(time.Now().Format("20060102"))
+	_ = redis.Client.SAdd(c, key, user.ID).Err()
+	_ = redis.Client.Expire(c, key, 48*time.Hour).Err()
 	response.Success(c, gin.H{
 		"token": token,
 	})

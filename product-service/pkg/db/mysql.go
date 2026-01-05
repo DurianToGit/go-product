@@ -5,20 +5,13 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log"
-	"product-service/internal/config"
 	"time"
 )
 
 var DB *gorm.DB
 
-func InitMySQL(cfg config.DBConfig) *gorm.DB {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		cfg.DBUser,
-		cfg.DBPass,
-		cfg.DBHost,
-		cfg.DBPort,
-		cfg.DBName,
-	)
+func InitMySQL(dsn string) *gorm.DB {
+
 	fmt.Println(dsn)
 	var err error
 

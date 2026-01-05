@@ -2,11 +2,13 @@ package config
 
 import (
 	"os"
+	"strconv"
 )
 
 type Config struct {
-	App AppConfig
-	DB  DBConfig
+	App   AppConfig
+	DB    DBConfig
+	Redis RedisConfig
 }
 
 type AppConfig struct {
@@ -22,8 +24,20 @@ type DBConfig struct {
 	DBName string
 }
 
+type RedisConfig struct {
+	Addr     string
+	Password string
+	DB       int
+}
+
 func Load() *Config {
 
+	redisDB := os.Getenv("REDIS_DB")
+	if redisDB == "" {
+		redisDB = "0"
+	}
+	// DB转为int类型
+	redisDBInt, _ := strconv.Atoi(redisDB)
 	return &Config{
 		App: AppConfig{
 			Env:  os.Getenv("ENV"),
@@ -35,6 +49,11 @@ func Load() *Config {
 			DBHost: os.Getenv("DB_HOST"),
 			DBPort: os.Getenv("DB_PORT"),
 			DBName: os.Getenv("DB_NAME"),
+		},
+		Redis: RedisConfig{
+			Addr:     os.Getenv("REDIS_ADDR"),
+			Password: os.Getenv("REDIS_PASSWORD"),
+			DB:       redisDBInt,
 		},
 	}
 }

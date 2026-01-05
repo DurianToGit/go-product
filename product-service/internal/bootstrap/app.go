@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"fmt"
 	"github.com/joho/godotenv"
 	"product-service/api/handler"
 	"product-service/internal/config"
@@ -8,6 +9,7 @@ import (
 	"product-service/internal/service"
 	"product-service/internal/validator"
 	"product-service/pkg/db"
+	"product-service/pkg/redis"
 )
 
 type App struct {
@@ -23,7 +25,15 @@ func InitApp() *App {
 	validator.Init()
 	// 加载配置
 	cfg := config.Load()
-	mySQL := db.InitMySQL(cfg.DB)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		cfg.DB.DBUser,
+		cfg.DB.DBPass,
+		cfg.DB.DBHost,
+		cfg.DB.DBPort,
+		cfg.DB.DBName,
+	)
+	mySQL := db.InitMySQL(dsn)
+	redis.InitRedis(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
 
 	// 初始化用户服务
 	userRepo := mysql.NewUserRepository(mySQL)

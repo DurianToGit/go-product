@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -29,8 +30,15 @@ func newTestDB(t *testing.T) *gorm.DB {
 	require.NotEmpty(t, cfg.DBPort)
 	require.NotEmpty(t, cfg.DBUser)
 	require.NotEmpty(t, cfg.DBName)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		cfg.DBUser,
+		cfg.DBPass,
+		cfg.DBHost,
+		cfg.DBPort,
+		cfg.DBName,
+	)
 
-	gdb := db.InitMySQL(cfg)
+	gdb := db.InitMySQL(dsn)
 
 	// 迁移（测试环境允许）
 	require.NoError(t, gdb.AutoMigrate(
