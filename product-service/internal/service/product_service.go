@@ -2,19 +2,27 @@ package service
 
 import (
 	"context"
+	"log"
 	"product-service/internal/domain"
 	"product-service/internal/dto"
 	"product-service/internal/errno"
 	"product-service/internal/repository"
+	"product-service/pkg/redis"
+	"product-service/pkg/rediskeys"
+	"product-service/pkg/redislock"
 	"time"
 )
 
 type ProductService struct {
-	repo repository.ProductRepository
+	repo   repository.ProductRepository
+	locker *redislock.Locker
 }
 
 func NewProductService(repo repository.ProductRepository) *ProductService {
-	return &ProductService{repo: repo}
+	return &ProductService{
+		repo:   repo,
+		locker: redislock.New(redis.Client),
+	}
 }
 
 func (s *ProductService) GetProducts(ctx context.Context, q *dto.ProductQuery) ([]*domain.Product, int64, error) {
@@ -37,7 +45,27 @@ func (s *ProductService) DeductStock(ctx context.Context, productId int64, count
 	if count <= 0 {
 		return errno.ProductErrInvalidStock
 	}
-	return s.repo.DeductStock(ctx, productId, count)
+	lockKey := rediskeys.ProductStockLockKey(productId)
+	token, ok, err := s.locker.TryLock(ctx, lockKey, 15*time.Second)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return errno.ProductErrStockLockFailed
+	}
+	defer func() {
+		ok, err := s.locker.Unlock(ctx, lockKey, token)
+		if err != nil {
+			log.Printf("unlock redis lock failed, key=%s, err=%v", lockKey, err)
+		}
+		if !ok {
+			log.Printf("unlock redis lock not ok (token mismatch), key=%s", lockKey)
+		}
+	}()
+	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	return s.repo.DeductStock(ctx2, productId, count)
 }
 
 func (s *ProductService) DeductStockOptimistic(ctx context.Context, productId int64, count int64) error {
