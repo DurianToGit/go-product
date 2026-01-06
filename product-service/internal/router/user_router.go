@@ -13,6 +13,7 @@ func InitUserRouter(r *gin.RouterGroup, h *handler.UserHandler) {
 		group.POST("login", h.Login)
 		group.GET("userinfo", h.UserInfo)
 		group.GET("", h.List)
+		group.GET(":id", h.Profile2)
 		group.PATCH("/:id", h.Update)
 	}
 	authGroup := r.Group("users")

@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"fmt"
 	"github.com/joho/godotenv"
+	"math/rand"
 	"product-service/api/handler"
 	"product-service/internal/config"
 	"product-service/internal/repository/mysql"
@@ -10,6 +11,7 @@ import (
 	"product-service/internal/validator"
 	"product-service/pkg/db"
 	"product-service/pkg/redis"
+	"time"
 )
 
 type App struct {
@@ -23,6 +25,8 @@ func InitApp() *App {
 	_ = godotenv.Load()
 	// 初始化验证器
 	validator.Init()
+	// 初始化随机数 不然rand的值会重复
+	rand.Seed(time.Now().UnixNano())
 	// 加载配置
 	cfg := config.Load()
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",

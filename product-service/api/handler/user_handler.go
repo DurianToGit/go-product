@@ -104,6 +104,20 @@ func (h *UserHandler) Profile(c *gin.Context) {
 	response.Success(c, user)
 }
 
+func (h *UserHandler) Profile2(c *gin.Context) {
+	userId, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	user, err := h.svc.GetByUserId(c, userId)
+	if err != nil {
+		if errors.Is(err, errno.UserErrNotFound) {
+			response.ErrorWithErrno(c, errno.UserErrNotFound)
+			return
+		}
+		response.ErrorWithErrno(c, errno.ServerError)
+		return
+	}
+	response.Success(c, user)
+}
+
 func (h *UserHandler) UserInfo(c *gin.Context) {
 	username := c.Query("username")
 	user, err := h.svc.GetByUsername(c, username)

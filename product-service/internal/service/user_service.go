@@ -3,22 +3,33 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"golang.org/x/sync/singleflight"
+	"math/rand"
 	"product-service/internal/domain"
 	"product-service/internal/dto"
+	"product-service/internal/errno"
 	"product-service/internal/repository"
 	"product-service/internal/repository/mysql/model"
+	"product-service/pkg/cache"
 	"product-service/pkg/redis"
 	"product-service/pkg/rediskeys"
 	"time"
 )
 
 type UserService struct {
-	repo repository.UserRepository
+	repo       repository.UserRepository
+	localCache *cache.LocalCache
 }
+
+var (
+	userSF singleflight.Group
+)
 
 func NewUserService(repo repository.UserRepository) *UserService {
 	return &UserService{
-		repo: repo,
+		repo:       repo,
+		localCache: cache.NewLocalCache(30 * time.Second),
 	}
 }
 
@@ -40,30 +51,58 @@ func (s *UserService) GetByUsername(ctx context.Context, username string) (*doma
 
 func (s *UserService) GetByUserId(ctx context.Context, userId int64) (*domain.User, error) {
 	key := rediskeys.UserInfoKey(userId)
-	// 从缓存中获取
-	if val, err := redis.Client.Get(ctx, key).Result(); err == nil {
+	// L1缓存
+	if val, ok := s.localCache.Get(key); ok {
+		if string(val) == domain.DataCacheNil {
+			return nil, errno.UserErrNotFound
+		}
 		var user domain.User
-		if err = json.Unmarshal([]byte(val), &user); err == nil {
+		if err := json.Unmarshal(val, &user); err == nil {
 			return &user, nil
 		}
-		_ = redis.Client.Del(ctx, key).Err()
+		s.localCache.Delete(key)
 	}
-	// 获取数据
-	user, err := s.repo.GetByUserId(ctx, userId)
-	if err != nil {
-		return nil, err
-	}
-	// 缓存
-	data, err := json.Marshal(user)
-	if err != nil {
-		return nil, err
-	}
-	err = redis.Client.Set(ctx, key, data, 5*time.Minute).Err()
+	// singleflight 合并回源
+	v, err, _ := userSF.Do(key, func() (any, error) {
+		// redis
+		val, rerr := redis.Client.Get(ctx, key).Bytes()
+		if rerr == nil {
+			s.localCache.Set(key, val)
+			if string(val) == domain.DataCacheNil {
+				return nil, errno.UserErrNotFound
+			}
+			var user domain.User
+			if err := json.Unmarshal(val, &user); err == nil {
+				return &user, nil
+			}
+		}
+		// DB
+		u, uerr := s.repo.GetByUserId(ctx, userId)
+		if uerr != nil {
+			if errors.Is(uerr, errno.UserErrNotFound) {
+				s.localCache.Set(key, []byte(domain.DataCacheNil))
+				_ = redis.Client.Set(ctx, key, domain.DataCacheNil, 30*time.Second).Err()
+			}
+			return nil, uerr
+		}
+		data, err := json.Marshal(u)
+		if err != nil {
+			return nil, err
+		}
+		s.localCache.Set(key, data)
+
+		ttl := 5*time.Minute + time.Duration(rand.Intn(60))*time.Second
+		cerr := redis.Client.Set(ctx, key, data, ttl).Err()
+		if cerr != nil {
+			return nil, cerr
+		}
+		return u, nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return user, nil
+	return v.(*domain.User), nil
 }
 
 func (s *UserService) UpdatePassword(ctx context.Context, username, oldPassword, newPassword string) error {
