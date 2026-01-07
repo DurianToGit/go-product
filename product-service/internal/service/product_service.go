@@ -10,18 +10,21 @@ import (
 	"product-service/pkg/redis"
 	"product-service/pkg/rediskeys"
 	"product-service/pkg/redislock"
+	"product-service/pkg/stream"
 	"time"
 )
 
 type ProductService struct {
-	repo   repository.ProductRepository
-	locker *redislock.Locker
+	repo                 repository.ProductRepository
+	locker               *redislock.Locker
+	productEventProducer *stream.ProductEventProducer
 }
 
 func NewProductService(repo repository.ProductRepository) *ProductService {
 	return &ProductService{
-		repo:   repo,
-		locker: redislock.New(redis.Client),
+		repo:                 repo,
+		locker:               redislock.New(redis.Client),
+		productEventProducer: stream.NewProductEventProducer(redis.Client),
 	}
 }
 
@@ -65,7 +68,20 @@ func (s *ProductService) DeductStock(ctx context.Context, productId int64, count
 	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
-	return s.repo.DeductStock(ctx2, productId, count)
+	err = s.repo.DeductStock(ctx2, productId, count)
+	if err == nil {
+		err2 := s.productEventProducer.Publish(ctx2, map[string]any{
+			"product_id": productId,
+			// "user_id":    userId,
+			"count":      count,
+			"event_type": "stock_deducted",
+		})
+		log.Printf("publish product event, product_id=%d,count=%d", productId, count)
+		if err2 != nil {
+			log.Printf("publish product event failed, err=%v, product_id=%d", err2, productId)
+		}
+	}
+	return err
 }
 
 func (s *ProductService) DeductStockOptimistic(ctx context.Context, productId int64, count int64) error {
