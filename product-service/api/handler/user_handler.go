@@ -34,10 +34,12 @@ func (h *UserHandler) List(c *gin.Context) {
 		return
 	}
 	result := response.ResultData{
-		List:     data,
-		Total:    total,
-		Page:     req.Page,
-		PageSize: req.PageSize,
+		List: data,
+		Mata: &response.Meta{
+			Total:    total,
+			Page:     req.Page,
+			PageSize: req.PageSize,
+		},
 	}
 	response.Success(c, result)
 }

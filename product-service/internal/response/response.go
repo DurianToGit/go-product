@@ -12,11 +12,15 @@ type Response struct {
 	Data interface{} `json:"data,omitempty"`
 }
 
+type Meta struct {
+	Total    int64 `json:"total"`
+	Page     int   `json:"page"`
+	PageSize int   `json:"page_size"`
+}
+
 type ResultData struct {
-	List     interface{}
-	Total    int64
-	Page     int
-	PageSize int
+	List interface{} `json:"list"`
+	Mata *Meta       `json:"meta"`
 }
 
 func Success(c *gin.Context, data interface{}) {

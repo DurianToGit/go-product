@@ -15,6 +15,8 @@ var (
 	Unauthorized  = &Error{Code: 40003, Msg: "Unauthorized"}
 
 	ErrDataNotFound = &Error{Code: 40008, Msg: "Data Not Found"}
+	// too many requests
+	ErrTooManyRequests = &Error{Code: 40009, Msg: "Too Many Requests"}
 
 	ProductErrNoEnoughStock = &Error{Code: 40101, Msg: "No Enough Stock"}
 	// 产品名称不能为空

@@ -55,10 +55,12 @@ func (h *ProductHandler) List(c *gin.Context) {
 		return
 	}
 	result := response.ResultData{
-		List:     data,
-		Total:    total,
-		Page:     req.Page,
-		PageSize: req.PageSize,
+		List: data,
+		Mata: &response.Meta{
+			Total:    total,
+			Page:     q.Page,
+			PageSize: q.PageSize,
+		},
 	}
 	response.Success(c, result)
 }
