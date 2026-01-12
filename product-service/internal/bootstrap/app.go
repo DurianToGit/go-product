@@ -20,7 +20,7 @@ type App struct {
 	ProductHandler *handler.ProductHandler
 }
 
-func InitApp() *App {
+func BaseInit() *config.Config {
 	// 加载环境变量
 	_ = godotenv.Load()
 	// 初始化验证器
@@ -29,6 +29,11 @@ func InitApp() *App {
 	rand.Seed(time.Now().UnixNano())
 	// 加载配置
 	cfg := config.Load()
+	return cfg
+}
+
+func InitApp() *App {
+	cfg := BaseInit()
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.DB.DBUser,
 		cfg.DB.DBPass,

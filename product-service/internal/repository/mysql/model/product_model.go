@@ -2,8 +2,6 @@ package model
 
 import (
 	"gorm.io/gorm"
-	"product-service/internal/errno"
-	"strings"
 )
 
 type ProductModel struct {
@@ -28,9 +26,9 @@ func (p *ProductModel) BeforeCreate(tx *gorm.DB) error {
 }
 
 func (p *ProductModel) BeforeSave(tx *gorm.DB) error {
-	p.Name = strings.TrimSpace(p.Name)
-	if p.Name == "" {
-		return errno.ProductErrNameEmpty
-	}
+	// p.Name = strings.TrimSpace(p.Name)
+	// if p.Name == "" {
+	// 	return errno.ProductErrNameEmpty
+	// }
 	return nil
 }

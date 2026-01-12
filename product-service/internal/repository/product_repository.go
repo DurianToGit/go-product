@@ -13,4 +13,6 @@ type ProductRepository interface {
 	List(ctx context.Context, q *dto.ProductQuery) ([]*domain.Product, int64, error)
 	DeductStock(ctx context.Context, productID int64, count int64) error
 	DeductStockOptimistic(ctx context.Context, productID int64, count int64) (bool, error)
+	DeductStockAtomic(ctx context.Context, productID int64, count int64) (bool, error)
+	ConsumeStockDeductEvent(ctx context.Context, stream, msgID string, productID, count int64, eventType string) error
 }

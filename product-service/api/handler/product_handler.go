@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"product-service/internal/domain"
 	"product-service/internal/dto"
 	"product-service/internal/errno"
@@ -20,6 +21,10 @@ type ProductReq struct {
 	Status          *int   `form:"status" json:"status"`
 	Page            int    `form:"page" json:"page" binding:"omitempty,min=1"`
 	PageSize        int    `form:"page_size" json:"page_size" binding:"omitempty,min=1,max=100"`
+}
+
+type ProductSecKillReq struct {
+	Count int64 `json:"count" binding:"required,min=1"`
 }
 
 func (p *ProductReq) ToDto() *dto.ProductQuery {
@@ -144,6 +149,7 @@ func (h *ProductHandler) DuctStock(c *gin.Context) {
 	response.Success(c, "DeductStock Success")
 }
 
+// 乐观锁
 func (h *ProductHandler) DuctStockOptimistic(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	count, _ := strconv.Atoi(c.Query("count"))
@@ -161,4 +167,47 @@ func (h *ProductHandler) DuctStockOptimistic(c *gin.Context) {
 		return
 	}
 	response.Success(c, "DeductStock Success")
+}
+
+// 秒杀
+func (h *ProductHandler) DuctStockSeckill(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.ErrorWithErrno(c, errno.InvalidParams)
+		return
+	}
+	var productSecKillReq ProductSecKillReq
+	if !BindAndValidateByJSON(c, &productSecKillReq) {
+		return
+	}
+	val, err := h.svc.DeductStockSeckill(c, id, productSecKillReq.Count)
+	if err != nil {
+		if errors.Is(err, errno.ProductErrSeckillStockNotInit) {
+			response.ErrorWithErrno(c, errno.ProductErrSeckillStockNotInit)
+			return
+		}
+		if errors.Is(err, errno.ProductErrSeckillStockNotEnough) {
+			response.ErrorWithErrno(c, errno.ProductErrSeckillStockNotEnough)
+			return
+		}
+		response.Error(c, 40000, err.Error())
+		return
+	}
+	response.Success(c, gin.H{
+		"val": val,
+	})
+}
+
+// 预热商品库存
+func (h *ProductHandler) PrewarmProductStock(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.ErrorWithErrno(c, errno.InvalidParams)
+		return
+	}
+	err = h.svc.PrewarmProductStock(c, id)
+	if err != nil {
+		response.Error(c, 40000, fmt.Sprintf("PrewarmProductStock Failed:%v", err))
+	}
+	response.Success(c, nil)
 }

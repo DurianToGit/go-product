@@ -26,6 +26,10 @@ var (
 	// stock not enough or retry limit reached
 	ProductErrStockNotEnough  = &Error{Code: 40104, Msg: "stock not enough or retry limit reached"}
 	ProductErrStockLockFailed = &Error{Code: 40105, Msg: "stock lock failed"}
+	// 秒杀库存未初始化
+	ProductErrSeckillStockNotInit = &Error{Code: 40106, Msg: "秒杀库存未初始化"}
+	// 秒杀库存不足
+	ProductErrSeckillStockNotEnough = &Error{Code: 40107, Msg: "秒杀库存不足"}
 
 	UsernameAlreadyExist     = &Error{Code: 40201, Msg: "Username Already Exist"}
 	UsernameNotFound         = &Error{Code: 40202, Msg: "Username Not Found"}

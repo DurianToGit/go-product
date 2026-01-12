@@ -16,6 +16,7 @@ func InitProductRouter(r *gin.RouterGroup, h *handler.ProductHandler) {
 		group.GET("/:id/detail", h.GetWithCreator)
 		group.GET("/deduct/:id", h.DuctStock)
 		group.GET("/deduct_op/:id", h.DuctStockOptimistic)
-
+		group.POST("/deduct_seckill/:id", h.DuctStockSeckill)
+		group.POST("/:id/stock/prewarm", h.PrewarmProductStock)
 	}
 }

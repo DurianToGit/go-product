@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// TokenBucket 令牌桶结构
 type TokenBucket struct {
 	mu sync.Mutex
 

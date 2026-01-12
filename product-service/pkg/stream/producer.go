@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"product-service/pkg/rediskeys"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -14,7 +15,7 @@ type ProductEventProducer struct {
 func NewProductEventProducer(rdb *redis.Client) *ProductEventProducer {
 	return &ProductEventProducer{
 		rdb:    rdb,
-		stream: "stream:product:event",
+		stream: rediskeys.ProductStreamKey,
 	}
 }
 
