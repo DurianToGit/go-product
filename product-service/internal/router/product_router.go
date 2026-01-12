@@ -11,6 +11,7 @@ func InitProductRouter(r *gin.RouterGroup, h *handler.ProductHandler) {
 	group := r.Group("products")
 	{
 		group.GET("", middleware.RateLimit("products:rl:ip", 20.0, 40, utils.GetClientIP), h.List)
+		group.GET("/search", middleware.RateLimit("products:search:rl:ip", 20.0, 40, utils.GetClientIP), h.Search)
 		group.POST("", h.Create)
 		group.GET("/:id", h.Get)
 		group.GET("/:id/detail", h.GetWithCreator)

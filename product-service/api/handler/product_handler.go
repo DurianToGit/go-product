@@ -70,6 +70,27 @@ func (h *ProductHandler) List(c *gin.Context) {
 	response.Success(c, result)
 }
 
+func (h *ProductHandler) Search(c *gin.Context) {
+	var req ProductReq
+	if !BindAndValidateByQuery(c, &req) {
+		return
+	}
+	q := req.ToDto()
+	data, total, err := h.svc.ProductSearch(c, q)
+	if err != nil {
+		response.ErrorWithErrno(c, errno.ServerError)
+		return
+	}
+	response.Success(c, response.ResultData{
+		List: data,
+		Mata: &response.Meta{
+			Total:    total,
+			Page:     q.Page,
+			PageSize: q.PageSize,
+		},
+	})
+}
+
 func (h *ProductHandler) Create(c *gin.Context) {
 	var req domain.Product
 	if !BindAndValidateByJSON(c, &req) {

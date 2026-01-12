@@ -12,3 +12,7 @@ func ProductStockLockKey(productId int64) string {
 func ProductStockKey(productId int64) string {
 	return fmt.Sprintf("product:stock:%d", productId)
 }
+
+func ProductSearchKey(hash string) string {
+	return "product:search:" + hash
+}
