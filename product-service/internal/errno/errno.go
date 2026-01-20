@@ -35,7 +35,10 @@ var (
 	UsernameNotFound         = &Error{Code: 40202, Msg: "Username Not Found"}
 	UserOldPasswordIncorrect = &Error{Code: 40203, Msg: "Old Password Incorrect"}
 	UserErrPasswordIncorrect = &Error{Code: 40204, Msg: "Password Incorrect"}
-	UserErrNotFound          = &Error{Code: 40006, Msg: "User Not Found"}
+	UserErrNotFound          = &Error{Code: 40205, Msg: "User Not Found"}
+
+	// 订单已存在,但是订单数据不一致
+	OrderErrOrderAlreadyExist = &Error{Code: 40306, Msg: "订单已存在,但是订单信息不一致"}
 
 	ServerError = &Error{Code: 50000, Msg: "Internal Server Error"}
 )

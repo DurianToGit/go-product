@@ -2,12 +2,12 @@ package service
 
 import (
 	"context"
-	"errors"
-	"gorm.io/gorm"
 	"log"
 	"product-service/internal/domain"
+	"product-service/internal/errno"
 	"product-service/internal/repository"
 	"product-service/pkg/utils"
+	"strings"
 )
 
 type OrderService struct {
@@ -30,12 +30,16 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 	// 尝试查找已存在的订单
 	existingOrder, err := s.repo.GetByUserIdemKey(ctx, userID, idemKey)
 	if err == nil && existingOrder != nil {
-		// 如果已存在，直接返回
+		// 如果已存在，但是信息不一致，则返回错误
+		if existingOrder.ProductID != productID || existingOrder.Count != count {
+			return nil, errno.OrderErrOrderAlreadyExist
+		}
 		return existingOrder, nil
 	}
 
 	// 如果不是记录不存在的错误，则返回错误
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && strings.Contains(err.Error(), "not found") {
+		log.Printf("查找订单失败:%v", err)
 		return nil, err
 	}
 
@@ -51,6 +55,14 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 
 	result, err := s.repo.Create(ctx, order)
 	if err != nil {
+		if strings.Contains(err.Error(), "Duplicate") {
+			// 尝试查找已存在的订单
+			existOrder, eerr := s.repo.GetByUserIdemKey(ctx, userID, idemKey)
+			if eerr == nil && existOrder != nil {
+				// 如果已存在，直接返回
+				return existOrder, nil
+			}
+		}
 		log.Printf("创建订单失败:%v", err)
 		return nil, err
 	}

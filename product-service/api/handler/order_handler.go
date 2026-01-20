@@ -41,6 +41,10 @@ func (h *OrderHandler) Create(c *gin.Context) {
 			response.ErrorWithErrno(c, errno.ProductErrSeckillStockNotInit)
 			return
 		}
+		if errors.Is(err, errno.OrderErrOrderAlreadyExist) {
+			response.ErrorWithErrno(c, errno.OrderErrOrderAlreadyExist)
+			return
+		}
 		response.ErrorWithErrno(c, errno.ServerError)
 		return
 	}

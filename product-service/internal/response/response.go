@@ -2,6 +2,7 @@ package response
 
 import (
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 	"product-service/internal/errno"
 )
@@ -24,6 +25,7 @@ type ResultData struct {
 }
 
 func Success(c *gin.Context, data interface{}) {
+	log.Printf("执行成功：%v", data)
 	c.JSON(http.StatusOK, Response{
 		Code: 0,
 		Msg:  "success",
@@ -32,6 +34,7 @@ func Success(c *gin.Context, data interface{}) {
 }
 
 func Error(c *gin.Context, code int, msg string) {
+	log.Printf("执行失败：%d:%v", code, msg)
 	c.JSON(http.StatusOK, Response{
 		Code: code,
 		Msg:  msg,
@@ -39,6 +42,7 @@ func Error(c *gin.Context, code int, msg string) {
 }
 
 func ErrorWithErrno(c *gin.Context, errno *errno.Error) {
+	log.Printf("执行失败：%v", errno.Msg)
 	c.JSON(http.StatusOK, Response{
 		Code: errno.Code,
 		Msg:  errno.Msg,

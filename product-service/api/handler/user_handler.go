@@ -93,8 +93,8 @@ func (h *UserHandler) Login(c *gin.Context) {
 }
 
 func (h *UserHandler) Profile(c *gin.Context) {
-	userId, _ := c.Get("user_id")
-	user, err := h.svc.GetByUserId(c, userId.(int64))
+	userId := GetUserID(c)
+	user, err := h.svc.GetByUserId(c, userId)
 	if err != nil {
 		if errors.Is(err, errno.UserErrNotFound) {
 			response.ErrorWithErrno(c, errno.UserErrNotFound)

@@ -90,3 +90,10 @@ Redis atomic + Lua \
 ## day27 2026-01-12
 ### 阶段实战
 实现“商品搜索 + 缓存 + 限流”接口
+
+## day28-day30 2026-01-13--2026-01-20
+### 项目 B（商品中心）启动
+设计业务架构
+设计 MySQL 表：user、product、stock、order
+搭建项目基础结构（cmd / internal / pkg）
+集成 Gin + GORM + Redis + JWT

@@ -73,6 +73,8 @@ Product Service 是一个使用 Go、Gin、GORM、MySQL 构建的微服务，提
 docker-compose up -d
 ```
 ### 商品服务说明
+* 启动流程
+  * 先启动Api服务，再启动消费者服务，因为订单服务依赖商品服务，且数据迁移migration在Api服务启动过程完成
 * 商品中心包含哪些进程
   * api：主进程，提供 HTTP 接口服务
   * worker：Stream 消费者进程，消费库存扣减事件并幂等落库（避免重复扣减）

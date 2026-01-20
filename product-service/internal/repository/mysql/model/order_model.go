@@ -9,7 +9,7 @@ type OrderModel struct {
 	ProductID int64  `gorm:"not null;index:idx_product_id"`
 	Count     int    `gorm:"not null;default:1"`
 	Status    string `gorm:"type:varchar(32);not null;default:'created'"`
-	IdemKey   string `gorm:"type:varchar(128);not null;default:'';uniqueIndex:uk_user_idem,priority:2"`
+	IdemKey   string `gorm:"type:varchar(128);not null;uniqueIndex:uk_user_idem,priority:2"`
 	// user_id + idem_key 复合唯一, IdemKey（幂等键）是：客户端为“一次业务意图”生成的唯一标识，用来保证“同一意图只创建一笔订单”。
 }
 
