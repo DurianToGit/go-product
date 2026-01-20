@@ -13,4 +13,6 @@ func Register(r *gin.Engine, app *bootstrap.App) {
 	InitUserRouter(api, app.UserHandler)
 
 	InitProductRouter(api, app.ProductHandler)
+
+	InitOrderRouter(api, app.OrderHandler)
 }

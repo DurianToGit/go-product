@@ -15,6 +15,14 @@ import (
 	"time"
 )
 
+// ProductService provides:
+// - CreateProduct
+// - SearchProducts (cached + rate limited)
+// - GetProductDetail
+// - PrewarmProductStock
+// - DeductStockSeckill (Redis atomic)
+// - DeductStockAtomic (DB final consistency via worker)
+
 type ProductService struct {
 	repo                 repository.ProductRepository
 	locker               *redislock.Locker
@@ -127,7 +135,7 @@ func (s *ProductService) ValidateAsync(p *domain.Product) error {
 	return <-ch
 }
 
-func (s *ProductService) DeductStockSeckill(ctx context.Context, productId int64, count int64) (int64, error) {
+func (s *ProductService) DeductStockSeckill(ctx context.Context, productId int64, count, userId int64) (int64, error) {
 
 	remain, err := seckill.DeductStockLua(ctx, redis.Client, productId, count)
 	if err != nil {
@@ -143,11 +151,12 @@ func (s *ProductService) DeductStockSeckill(ctx context.Context, productId int64
 		defer cancel()
 		err2 := s.productEventProducer.Publish(ctx2, map[string]any{
 			"product_id": productId,
+			"user_id":    userId,
 			"count":      count,
 			"event_type": "stock_deducted",
 			"source":     "seckill",
 		})
-		log.Printf("publish product event, product_id=%d,count=%d", productId, count)
+		log.Printf("publish product event, product_id=%d,count=%d,user_id=%d", productId, count, userId)
 		if err2 != nil {
 			log.Printf("publish product event failed, err=%v, product_id=%d", err2, productId)
 		}

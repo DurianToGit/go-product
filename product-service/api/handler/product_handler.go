@@ -201,7 +201,8 @@ func (h *ProductHandler) DuctStockSeckill(c *gin.Context) {
 	if !BindAndValidateByJSON(c, &productSecKillReq) {
 		return
 	}
-	val, err := h.svc.DeductStockSeckill(c, id, productSecKillReq.Count)
+	userId, _ := c.Get("user_id")
+	val, err := h.svc.DeductStockSeckill(c, id, productSecKillReq.Count, userId.(int64))
 	if err != nil {
 		if errors.Is(err, errno.ProductErrSeckillStockNotInit) {
 			response.ErrorWithErrno(c, errno.ProductErrSeckillStockNotInit)

@@ -7,6 +7,7 @@ import (
 	"product-service/api/handler"
 	"product-service/internal/config"
 	"product-service/internal/repository/mysql"
+	"product-service/internal/repository/mysql/model"
 	"product-service/internal/service"
 	"product-service/internal/validator"
 	"product-service/pkg/db"
@@ -18,6 +19,7 @@ type App struct {
 	Config         *config.Config
 	UserHandler    *handler.UserHandler
 	ProductHandler *handler.ProductHandler
+	OrderHandler   *handler.OrderHandler
 }
 
 func BaseInit() *config.Config {
@@ -44,6 +46,13 @@ func InitApp() *App {
 	mySQL := db.InitMySQL(dsn)
 	redis.InitRedis(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
 
+	// 迁移
+	_ = mySQL.AutoMigrate(
+		&model.ProductModel{},
+		&model.ProductEventConsumedModel{},
+		&model.OrderModel{},
+	)
+
 	// 初始化用户服务
 	userRepo := mysql.NewUserRepository(mySQL)
 	userService := service.NewUserService(userRepo)
@@ -54,9 +63,15 @@ func InitApp() *App {
 	productService := service.NewProductService(productRepo)
 	productHandler := handler.NewProductHandler(productService)
 
+	// 初始化订单服务
+	orderRepo := mysql.NewOrderRepository(mySQL)
+	orderService := service.NewOrderService(orderRepo, productService)
+	orderHandler := handler.NewOrderHandler(orderService)
+
 	return &App{
 		Config:         cfg,
 		UserHandler:    userHandler,
 		ProductHandler: productHandler,
+		OrderHandler:   orderHandler,
 	}
 }

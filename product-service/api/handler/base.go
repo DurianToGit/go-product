@@ -21,3 +21,7 @@ func BindAndValidateByQuery(c *gin.Context, req interface{}) bool {
 	}
 	return true
 }
+
+func GetUserID(c *gin.Context) int64 {
+	return c.GetInt64("user_id")
+}

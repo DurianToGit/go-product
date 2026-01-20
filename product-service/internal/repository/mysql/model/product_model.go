@@ -12,6 +12,7 @@ type ProductModel struct {
 	Version   int       `gorm:"not null;default:1"`
 	CreatorID int64     `gorm:"not null;index:idx_creator_id"`
 	Creator   UserModel `gorm:"foreignKey:CreatorID;references:ID"`
+	Status    int       `gorm:"not null;default:1;index:idx_status"`
 }
 
 func (ProductModel) TableName() string {

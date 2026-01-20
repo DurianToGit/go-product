@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"product-service/internal/bootstrap"
 	"product-service/internal/repository/mysql"
-	"product-service/internal/repository/mysql/model"
 	"product-service/pkg/db"
 	"product-service/pkg/redis"
 	"product-service/pkg/rediskeys"
@@ -30,11 +29,6 @@ func main() {
 	)
 	mySQL := db.InitMySQL(dsn)
 	redis.InitRedis(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
-	// 迁移
-	_ = mySQL.AutoMigrate(
-		&model.ProductModel{},
-		&model.ProductEventConsumedModel{},
-	)
 	consumer := stream.NewProductEventConsumer(redis.Client, "product-consumer")
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -61,6 +55,11 @@ func main() {
 		if err != nil {
 			return err
 		}
+		userId, err := toInt64(msg.Values["user_id"])
+		if err != nil {
+			return err
+		}
+		log.Printf("收到商品库存扣减事件：product_id=%d, count=%d, user_id=%d", productID, count, userId)
 		// 幂等 + 扣库存（事务内）
 		return productRepo.ConsumeStockDeductEvent(ctx, rediskeys.ProductStreamKey, msg.ID, productID, count, eventType)
 
