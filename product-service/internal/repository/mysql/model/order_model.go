@@ -26,7 +26,7 @@ func (order *OrderModel) ToOrderDomain() *domain.Order {
 		Count:     order.Count,
 		Status:    order.Status,
 		IdemKey:   order.IdemKey,
-		CreatedAt: order.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt: order.UpdatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt: order.CreatedAt,
+		UpdatedAt: order.UpdatedAt,
 	}
 }

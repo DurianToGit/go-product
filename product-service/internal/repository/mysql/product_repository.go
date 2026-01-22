@@ -204,6 +204,50 @@ func (r *ProductRepository) ConsumeStockDeductEvent(
 	})
 }
 
+func (r *ProductRepository) ConsumeRestockDeductEvent(
+	ctx context.Context,
+	stream, msgID string,
+	productID, count int64,
+	eventType string,
+) error {
+
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1) 幂等记录（先插入）
+		rec := &model.ProductEventConsumedModel{
+			Stream:    stream,
+			MsgID:     msgID,
+			ProductId: productID,
+			Count:     count,
+			EventType: eventType,
+			CreatedAt: time.Now().Unix(),
+		}
+
+		if err := tx.Create(rec).Error; err != nil {
+			// duplicate -> 已处理过，直接返回 nil，让上层 ACK
+			if isDuplicateKeyError(err) {
+				return nil
+			}
+			return err
+		}
+
+		// 2) 扣 MySQL 库存（原子）
+		res := tx.Model(&model.ProductModel{}).
+			Where("id = ?", productID).
+			Update("stock", gorm.Expr("stock + ?", count))
+
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			// Redis 加了 但是产品不存在？
+			return errno.ErrDataNotFound
+		}
+		// TODO 恢复Redis库存,或者后期添加模型的回调事件去恢复库存
+
+		return nil
+	})
+}
+
 func isDuplicateKeyError(err error) bool {
 	var me *mysql.MySQLError
 	if errors.As(err, &me) {

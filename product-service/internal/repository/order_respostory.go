@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"product-service/internal/domain"
+	"product-service/internal/repository/mysql/model"
+	"time"
 )
 
 type OrderRepository interface {
@@ -10,4 +12,5 @@ type OrderRepository interface {
 	Get(ctx context.Context, id int64) (*domain.Order, error)
 	GetByUserIdemKey(ctx context.Context, userId int64, idemKey string) (*domain.Order, error)
 	Delete(ctx context.Context, id int64) error
+	CancelExpired(ctx context.Context, deadline time.Time) (int64, []*model.OrderModel, error)
 }

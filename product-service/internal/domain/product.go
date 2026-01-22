@@ -8,3 +8,6 @@ type Product struct {
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }
+
+const ProductEventTypeStockDeducted = "stock_deducted"
+const ProductEventTypeRestockDeducted = "restock_deducted"

@@ -7,6 +7,7 @@ import (
 	"log"
 	"os/signal"
 	"product-service/internal/bootstrap"
+	"product-service/internal/domain"
 	"product-service/internal/repository/mysql"
 	"product-service/pkg/db"
 	"product-service/pkg/redis"
@@ -43,42 +44,52 @@ func main() {
 	go consumer.Consume(ctx, func(ctx context.Context, msg redis2.XMessage) error {
 		// 解析 values
 		eventType, _ := msg.Values["event_type"].(string)
-		if eventType != "stock_deducted" {
-			return nil // 不关心的事件直接 ack（或直接返回 nil 让其 ack）
+		if eventType == domain.ProductEventTypeStockDeducted {
+			return stockStockDeducted(ctx, msg, productRepo)
+		} else if eventType == domain.ProductEventTypeRestockDeducted {
+			return restockStockDeducted(ctx, msg, productRepo)
 		}
-
-		productID, err := toInt64(msg.Values["product_id"])
-		if err != nil {
-			return err
-		}
-		count, err := toInt64(msg.Values["count"])
-		if err != nil {
-			return err
-		}
-		userId, err := toInt64(msg.Values["user_id"])
-		if err != nil {
-			return err
-		}
-		log.Printf("收到商品库存扣减事件：product_id=%d, count=%d, user_id=%d", productID, count, userId)
-		// 幂等 + 扣库存（事务内）
-		return productRepo.ConsumeStockDeductEvent(ctx, rediskeys.ProductStreamKey, msg.ID, productID, count, eventType)
-
-		/*ok, err := productRepo.DeductStockAtomic(ctx, productID, count) // 你需要拿到 repo 实例
-		if err != nil {
-			return err
-		}
-		if !ok {
-			// MySQL 不够库存：这里属于一致性问题（Redis 扣了但 DB 没扣）
-			// D26 v0 先返回 error 让它 pending，后续可以做补偿/人工处理
-			return errno.ProductErrNoEnoughStock
-		}
-		return nil*/
+		return nil
 	})
 
 	// 等待退出信号
 	log.Println("Worker 启动成功，开始监听 stream...")
 	<-ctx.Done()
 	log.Println("收到退出信号，正在关闭...")
+}
+
+// 商品库存扣减
+func stockStockDeducted(ctx context.Context, msg redis2.XMessage, productRepo *mysql.ProductRepository) error {
+	productID, err := toInt64(msg.Values["product_id"])
+	if err != nil {
+		return err
+	}
+	count, err := toInt64(msg.Values["count"])
+	if err != nil {
+		return err
+	}
+	userId, err := toInt64(msg.Values["user_id"])
+	if err != nil {
+		return err
+	}
+	log.Printf("收到商品库存扣减事件：product_id=%d, count=%d, user_id=%d", productID, count, userId)
+	// 幂等 + 扣库存（事务内）
+	return productRepo.ConsumeStockDeductEvent(ctx, rediskeys.ProductStreamKey, msg.ID, productID, count, domain.ProductEventTypeStockDeducted)
+}
+
+// 恢复库存
+func restockStockDeducted(ctx context.Context, msg redis2.XMessage, productRepo *mysql.ProductRepository) error {
+	productID, err := toInt64(msg.Values["product_id"])
+	if err != nil {
+		return err
+	}
+	count, err := toInt64(msg.Values["count"])
+	if err != nil {
+		return err
+	}
+	log.Printf("收到商品库存恢复扣减事件：product_id=%d, count=%d", productID, count)
+	// 幂等 + 扣库存（事务内）
+	return productRepo.ConsumeRestockDeductEvent(ctx, rediskeys.ProductStreamKey, msg.ID, productID, count, domain.ProductEventTypeRestockDeducted)
 }
 
 func toInt64(v any) (int64, error) {

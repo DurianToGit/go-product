@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"product-service/internal/domain"
 	"sync"
 	"testing"
 	"time"
@@ -137,4 +138,64 @@ func TestOrderService_Create_Idempotency_ParamMismatch(t *testing.T) {
 	_, err = svc.Create(ctx, userID, 2002, 1, idemKey)
 	require.Error(t, err)
 	require.ErrorIs(t, err, errno.OrderErrOrderAlreadyExist)
+}
+
+func TestOrderService_CancelExpired(t *testing.T) {
+	gdb := newTestDB(t)
+	repo := mysqlrepo.NewOrderRepository(gdb)
+	productRepo := mysqlrepo.NewProductRepository(gdb)
+	productService := service.NewProductService(productRepo)
+	svc := service.NewOrderService(repo, productService)
+
+	ctx := context.Background()
+	const (
+		userID    int64 = 1003
+		idemKey         = "idem-cancel-001"
+		idemKey2        = "idem-paid-001"
+		productID int64 = 2003
+	)
+	create := time.Now().Add(-time.Hour)
+	order := &domain.Order{
+		OrderNo:   "order-123345",
+		UserID:    userID,
+		ProductID: productID,
+		Status:    domain.OrderStatusCreated,
+		Count:     1,
+		IdemKey:   idemKey,
+		CreatedAt: create,
+		UpdatedAt: create,
+	}
+
+	session := gdb.Session(&gorm.Session{SkipHooks: true})
+	err := session.WithContext(ctx).Create(&order).Error
+	// result, err := svc.Repo.Create(ctx, order)
+	require.NoError(t, err)
+	_, err = svc.CancelExpired(ctx, time.Now(), time.Minute*15)
+	require.NoError(t, err)
+	getResult, err := svc.Get(ctx, order.ID)
+	require.NoError(t, err)
+	require.Equal(t, domain.OrderStatusCanceled, getResult.Status)
+
+	// 查询paid订单后取消订单，订单状态不变
+
+	orderPaid := &domain.Order{
+		OrderNo:   "order-12334566",
+		UserID:    userID,
+		ProductID: productID,
+		Status:    domain.OrderStatusPaid,
+		Count:     1,
+		IdemKey:   idemKey2,
+		CreatedAt: create,
+		UpdatedAt: create,
+	}
+
+	errP := session.WithContext(ctx).Create(&orderPaid).Error
+	// resultPaid, errP := svc.Repo.Create(ctx, orderPaid)
+	require.NoError(t, errP)
+	time.Sleep(time.Second * 1)
+	_, errP = svc.CancelExpired(ctx, time.Now(), time.Minute*15)
+	getResultP, err := svc.Get(ctx, orderPaid.ID)
+	require.NoError(t, err)
+	require.Equal(t, domain.OrderStatusPaid, getResultP.Status)
+
 }

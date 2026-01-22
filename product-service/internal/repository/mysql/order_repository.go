@@ -8,6 +8,7 @@ import (
 	"product-service/internal/domain"
 	"product-service/internal/errno"
 	"product-service/internal/repository/mysql/model"
+	"time"
 )
 
 type OrderRepository struct {
@@ -62,4 +63,21 @@ func (r *OrderRepository) GetByUserIdemKey(ctx context.Context, userId int64, id
 
 func (r *OrderRepository) Delete(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Delete(&model.OrderModel{}, id).Error
+}
+
+func (r *OrderRepository) CancelExpired(ctx context.Context, deadline time.Time) (int64, []*model.OrderModel, error) {
+	var data []*model.OrderModel
+	r.db.WithContext(ctx).Model(&model.OrderModel{}).
+		Where("status = ? and updated_at < ?", domain.OrderStatusCreated, deadline).
+		Find(&data)
+	var ids []int64
+	for _, v := range data {
+		ids = append(ids, v.ID)
+		log.Println("取消的订单ID:", v.ID)
+	}
+	tx2 := r.db.WithContext(ctx).Model(&model.OrderModel{}).
+		Where("id in ?", ids).
+		Update("status", domain.OrderStatusCanceled)
+
+	return tx2.RowsAffected, data, tx2.Error
 }

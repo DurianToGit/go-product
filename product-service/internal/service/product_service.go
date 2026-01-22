@@ -153,7 +153,7 @@ func (s *ProductService) DeductStockSeckill(ctx context.Context, productId int64
 			"product_id": productId,
 			"user_id":    userId,
 			"count":      count,
-			"event_type": "stock_deducted",
+			"event_type": domain.ProductEventTypeStockDeducted,
 			"source":     "seckill",
 		})
 		log.Printf("publish product event, product_id=%d,count=%d,user_id=%d", productId, count, userId)

@@ -6,21 +6,26 @@ import (
 	"product-service/internal/domain"
 	"product-service/internal/errno"
 	"product-service/internal/repository"
+	"product-service/pkg/redis"
+	"product-service/pkg/stream"
 	"product-service/pkg/utils"
 	"strings"
+	"time"
 )
 
 type OrderService struct {
-	repo       repository.OrderRepository
-	productSvc *ProductService
-	gen        *utils.DistributedOrderGenerator
+	Repo                 repository.OrderRepository
+	ProductSvc           *ProductService
+	Gen                  *utils.DistributedOrderGenerator
+	productEventProducer *stream.ProductEventProducer
 }
 
 func NewOrderService(repo repository.OrderRepository, productService *ProductService) *OrderService {
 	return &OrderService{
-		repo:       repo,
-		productSvc: productService,
-		gen:        utils.NewDistributedOrderGenerator("order_"),
+		Repo:                 repo,
+		ProductSvc:           productService,
+		Gen:                  utils.NewDistributedOrderGenerator("order_"),
+		productEventProducer: stream.NewProductEventProducer(redis.Client),
 	}
 }
 
@@ -28,7 +33,7 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 	var order *domain.Order
 
 	// 尝试查找已存在的订单
-	existingOrder, err := s.repo.GetByUserIdemKey(ctx, userID, idemKey)
+	existingOrder, err := s.Repo.GetByUserIdemKey(ctx, userID, idemKey)
 	if err == nil && existingOrder != nil {
 		// 如果已存在，但是信息不一致，则返回错误
 		if existingOrder.ProductID != productID || existingOrder.Count != count {
@@ -45,7 +50,7 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 
 	// 创建新订单
 	order = &domain.Order{
-		OrderNo:   s.gen.GenerateOrderID(),
+		OrderNo:   s.Gen.GenerateOrderID(),
 		UserID:    userID,
 		ProductID: productID,
 		Status:    domain.OrderStatusCreated,
@@ -53,11 +58,11 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 		IdemKey:   idemKey,
 	}
 
-	result, err := s.repo.Create(ctx, order)
+	result, err := s.Repo.Create(ctx, order)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "duplicate") {
 			// 尝试查找已存在的订单
-			existOrder, eerr := s.repo.GetByUserIdemKey(ctx, userID, idemKey)
+			existOrder, eerr := s.Repo.GetByUserIdemKey(ctx, userID, idemKey)
 			if eerr == nil && existOrder != nil {
 				// 如果已存在，直接返回
 				return existOrder, nil
@@ -68,9 +73,9 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 	}
 
 	// 扣减库存
-	_, err = s.productSvc.DeductStockSeckill(ctx, productID, int64(count), userID)
+	_, err = s.ProductSvc.DeductStockSeckill(ctx, productID, int64(count), userID)
 	if err != nil {
-		derr := s.repo.Delete(ctx, result.ID)
+		derr := s.Repo.Delete(ctx, result.ID)
 		if derr != nil {
 			log.Printf("扣库存失败[%v]后，删除订单失败:%v", err, derr)
 			return nil, derr
@@ -78,4 +83,35 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 		return nil, err
 	}
 	return result, nil
+}
+
+func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout time.Duration) (int64, error) {
+	deadline := now.Add(-timeout)
+	num, data, err := s.Repo.CancelExpired(ctx, deadline)
+	if err != nil {
+		log.Printf("取消订单失败:%v", err)
+		return 0, err
+	}
+	if num == 0 {
+		return 0, nil
+	}
+	for _, order := range data {
+		// 恢复库存
+		err2 := s.productEventProducer.Publish(ctx, map[string]any{
+			"product_id": order.ProductID,
+			"count":      order.Count,
+			"event_type": domain.ProductEventTypeRestockDeducted,
+			"user_id":    order.UserID,
+			"order_id":   order.ID,
+			"source":     "cancelExpiredOrder",
+		})
+		if err2 != nil {
+			log.Printf("恢复库存流发送失败:%v", err2)
+		}
+	}
+	return num, nil
+}
+
+func (s *OrderService) Get(ctx context.Context, id int64) (*domain.Order, error) {
+	return s.Repo.Get(ctx, id)
 }
