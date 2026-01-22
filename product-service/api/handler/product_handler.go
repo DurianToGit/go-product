@@ -24,7 +24,8 @@ type ProductReq struct {
 }
 
 type ProductSecKillReq struct {
-	Count int64 `json:"count" binding:"required,min=1"`
+	Count   int64  `json:"count" binding:"required,min=1"`
+	IdemKey string `json:"idem_key" binding:"required"`
 }
 
 func (p *ProductReq) ToDto() *dto.ProductQuery {
@@ -202,7 +203,7 @@ func (h *ProductHandler) DuctStockSeckill(c *gin.Context) {
 		return
 	}
 	userId := GetUserID(c)
-	val, err := h.svc.DeductStockSeckill(c, id, productSecKillReq.Count, userId)
+	val, err := h.svc.DeductStockSeckill(c, id, productSecKillReq.Count, userId, productSecKillReq.IdemKey)
 	if err != nil {
 		if errors.Is(err, errno.ProductErrSeckillStockNotInit) {
 			response.ErrorWithErrno(c, errno.ProductErrSeckillStockNotInit)

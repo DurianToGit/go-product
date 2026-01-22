@@ -73,7 +73,7 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 	}
 
 	// 扣减库存
-	_, err = s.ProductSvc.DeductStockSeckill(ctx, productID, int64(count), userID)
+	_, err = s.ProductSvc.DeductStockSeckill(ctx, productID, int64(count), userID, idemKey)
 	if err != nil {
 		derr := s.Repo.Delete(ctx, result.ID)
 		if derr != nil {
@@ -97,14 +97,15 @@ func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout
 	}
 	for _, order := range data {
 		// 恢复库存
-		err2 := s.productEventProducer.Publish(ctx, map[string]any{
+		onceKey := stream.SideFxKeyRestock(order.ID)
+		err2 := s.productEventProducer.PublishOnce(ctx, onceKey, map[string]any{
 			"product_id": order.ProductID,
 			"count":      order.Count,
 			"event_type": domain.ProductEventTypeRestockDeducted,
 			"user_id":    order.UserID,
 			"order_id":   order.ID,
 			"source":     "cancelExpiredOrder",
-		})
+		}, 30*time.Minute)
 		if err2 != nil {
 			log.Printf("恢复库存流发送失败:%v", err2)
 		}
