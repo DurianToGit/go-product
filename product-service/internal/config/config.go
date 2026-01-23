@@ -9,6 +9,7 @@ type Config struct {
 	App   AppConfig
 	DB    DBConfig
 	Redis RedisConfig
+	Etcd  EtcdConfig
 }
 
 type AppConfig struct {
@@ -28,6 +29,10 @@ type RedisConfig struct {
 	Addr     string
 	Password string
 	DB       int
+}
+
+type EtcdConfig struct {
+	Endpoints []string
 }
 
 func Load() *Config {
@@ -54,6 +59,9 @@ func Load() *Config {
 			Addr:     os.Getenv("REDIS_ADDR"),
 			Password: os.Getenv("REDIS_PASSWORD"),
 			DB:       redisDBInt,
+		},
+		Etcd: EtcdConfig{
+			Endpoints: []string{os.Getenv("ETCD_ADDR")},
 		},
 	}
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log"
+	"product-service/internal/config"
 	"product-service/internal/domain"
 	"product-service/internal/dto"
 	"product-service/internal/errno"
@@ -68,6 +69,7 @@ func (s *ProductService) PrewarmProductStock(ctx context.Context, id int64) erro
 func (s *ProductService) DeductStockSeckill(ctx context.Context, productId int64, count, userId int64, idemKey string) (int64, error) {
 
 	remain, err := seckill.DeductStockLua(ctx, redis.Client, productId, count)
+	cfg := config.GetRuntimeConfig()
 	if err != nil {
 		return 0, err
 	}
@@ -86,7 +88,7 @@ func (s *ProductService) DeductStockSeckill(ctx context.Context, productId int64
 			"count":      count,
 			"event_type": domain.ProductEventTypeStockDeducted,
 			"source":     "seckill",
-		}, 30*time.Minute)
+		}, time.Duration(cfg.OrderCancelTimeoutSec)*time.Second)
 		log.Printf("publish product event, product_id=%d,count=%d,user_id=%d", productId, count, userId)
 		if err2 != nil {
 			log.Printf("publish product event failed, err=%v, product_id=%d", err2, productId)

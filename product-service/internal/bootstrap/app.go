@@ -1,8 +1,10 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
 	"github.com/joho/godotenv"
+	"log"
 	"math/rand"
 	"product-service/api/handler"
 	"product-service/internal/config"
@@ -31,6 +33,21 @@ func BaseInit() *config.Config {
 	rand.Seed(time.Now().UnixNano())
 	// 加载配置
 	cfg := config.Load()
+	// etcd 加载器
+	loader, err := config.NewEtcdLoader(cfg.Etcd.Endpoints)
+	if err != nil {
+		log.Fatalf("init etcd failed: %v", err)
+	}
+
+	ctx := context.Background()
+	// 启动时加载
+	if err := loader.LoadOnce(ctx); err != nil {
+		log.Fatalf("load config failed: %v", err)
+	}
+
+	// 后台 etcd watch
+	go loader.Watch(ctx)
+
 	return cfg
 }
 

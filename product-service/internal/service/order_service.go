@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log"
+	"product-service/internal/config"
 	"product-service/internal/domain"
 	"product-service/internal/errno"
 	"product-service/internal/repository"
@@ -95,6 +96,7 @@ func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout
 	if num == 0 {
 		return 0, nil
 	}
+	cfg := config.GetRuntimeConfig()
 	for _, order := range data {
 		// 恢复库存
 		onceKey := stream.SideFxKeyRestock(order.ID)
@@ -105,7 +107,7 @@ func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout
 			"user_id":    order.UserID,
 			"order_id":   order.ID,
 			"source":     "cancelExpiredOrder",
-		}, 30*time.Minute)
+		}, time.Duration(cfg.OrderCancelTimeoutSec)*time.Second)
 		if err2 != nil {
 			log.Printf("恢复库存流发送失败:%v", err2)
 		}

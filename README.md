@@ -101,3 +101,7 @@ Redis atomic + Lua \
 ## day31 2026-01-23
 ### 微服务基础架构理论
 服务拆分、CAP、API Gateway
+
+## day32 2026-01-23
+### 配置中心（Etcd / Nacos）
+Etcd 实战，强化一下使用模式
