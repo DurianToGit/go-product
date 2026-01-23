@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 	"fmt"
+	"log"
 	"product-service/pkg/rediskeys"
 	"time"
 
@@ -38,6 +39,7 @@ func (p *ProductEventProducer) PublishOnce(ctx context.Context, onceKey string, 
 	}
 	if !ok {
 		// 已发布过（或并发下别人拿到了锁），直接视为成功
+		log.Printf("publish skipped due to onceKey exists: %s", onceKey)
 		return nil
 	}
 

@@ -148,49 +148,6 @@ func (h *ProductHandler) GetWithCreator(c *gin.Context) {
 	})
 }
 
-func (h *ProductHandler) DuctStock(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		response.ErrorWithErrno(c, errno.InvalidParams)
-		return
-	}
-	count, err := strconv.ParseInt(c.Query("count"), 10, 64)
-	if err != nil {
-		response.ErrorWithErrno(c, errno.InvalidParams)
-		return
-	}
-	err = h.svc.DeductStock(c, id, count)
-	if err != nil {
-		if errors.Is(err, errno.ProductErrInvalidStock) {
-			response.ErrorWithErrno(c, errno.ProductErrInvalidStock)
-			return
-		}
-		response.Error(c, 40000, "DeductStock Failed")
-		return
-	}
-	response.Success(c, "DeductStock Success")
-}
-
-// 乐观锁
-func (h *ProductHandler) DuctStockOptimistic(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	count, _ := strconv.Atoi(c.Query("count"))
-	err := h.svc.DeductStockOptimistic(c, int64(id), int64(count))
-	if err != nil {
-		if errors.Is(err, errno.ProductErrInvalidStock) {
-			response.ErrorWithErrno(c, errno.ProductErrInvalidStock)
-		}
-		if errors.Is(err, errno.ProductErrStockNotEnough) {
-			response.ErrorWithErrno(c, errno.ProductErrStockNotEnough)
-			return
-		}
-
-		response.Error(c, 40000, "DeductStock Failed")
-		return
-	}
-	response.Success(c, "DeductStock Success")
-}
-
 // 秒杀
 func (h *ProductHandler) DuctStockSeckill(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)

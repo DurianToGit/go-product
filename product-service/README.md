@@ -90,3 +90,31 @@ docker-compose up -d
 
 * Stream 在这里解决什么问题
   * 将“Redis 秒杀扣减成功”事件异步投递给 worker，worker 负责 MySQL 最终落库；失败进入 pending 可重试，实现最终一致与解耦
+
+* 服务边界：user/product/order 各自负责什么
+  * user 服务：
+    * 注册/登录/刷新 token 
+    * JWT 签发（AuthN） 
+    * 鉴权能力输出：user_id（AuthZ 可先不做复杂） 
+    * 用户资料（Profile）
+  * product 服务：
+    * 商品 CRUD 
+    * 库存模型（Redis Lua + MySQL 落库） 
+    * 商品相关缓存/搜索/限流 
+    * 事件消费幂等（product_event_consumed）
+  * order 服务：
+    * 订单 CRUD
+    * 订单状态机（created/paid/canceled）
+    * 超时取消（cron/worker）
+    * 订单事件（取消触发恢复库存事件等）
+
+* 依赖方向：谁可以调用谁（禁止循环）
+  * 商品和订单服务之间，订单服务依赖商品服务，
+  * 用户服务提供用户信息，可以供给商品服务和订单服务使用，商品/订单服务获取 user_id 的方式：本地校验 JWT，不在请求链路上同步调用 user-service（避免把 user 变成瓶颈）
+
+* 数据归属：每张表属于哪个服务；跨服务只传 id，不 join
+  * users 表：user 服务
+  * products 表：product 服务
+  * product_event_consumed 表：product 服务
+  * orders 表：order 服务
+  * orders.user_id 只存 id，不存用户详情；需要详情由聚合层获取或冗余快照。
