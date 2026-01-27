@@ -36,7 +36,7 @@ func (r *EtcdRegistry) Register(ctx context.Context, serviceName string, inst Se
 		return err
 	}
 	// 2)写入key 绑定lease
-	key := fmt.Sprintf("service/%s/%s", serviceName, inst)
+	key := fmt.Sprintf("service/%s/%s", serviceName, inst.ID)
 	valByBets, _ := json.Marshal(inst)
 	if _, err = r.cli.Put(ctx, key, string(valByBets), clientv3.WithLease(leaseResp.ID)); err != nil {
 		return err

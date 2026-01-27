@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"product-service/internal/bootstrap"
 	"product-service/internal/domain"
+	"product-service/internal/registry"
 	"product-service/internal/repository/mysql"
 	"product-service/pkg/db"
 	"product-service/pkg/redis"
@@ -37,6 +38,26 @@ func main() {
 	if err != nil {
 		log.Println("init group error:", err)
 		return
+	}
+
+	// 初始化服务注册中心
+	// ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	// defer stop()
+	reg, _ := registry.NewEtcdRegistry(cfg.Etcd.Endpoints)
+	defer func(reg *registry.EtcdRegistry) {
+		err := reg.Close()
+		if err != nil {
+
+		}
+	}(reg)
+	inst := registry.ServiceInstance{
+		ID:   "api-1",          // 先写死，后面 D38 会改成 uuid/hostname+pid
+		Addr: "127.0.0.1:8080", // 你的实际监听地址
+	}
+
+	rerr := reg.Register(ctx, "product-service", inst, 10)
+	if rerr != nil {
+		log.Printf("[registry] Register failed: %v", rerr)
 	}
 
 	// 初始化商品服务
