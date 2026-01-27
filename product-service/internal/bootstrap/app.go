@@ -6,14 +6,17 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"math/rand"
+	"os/signal"
 	"product-service/api/handler"
 	"product-service/internal/config"
+	"product-service/internal/registry"
 	"product-service/internal/repository/mysql"
 	"product-service/internal/repository/mysql/model"
 	"product-service/internal/service"
 	"product-service/internal/validator"
 	"product-service/pkg/db"
 	"product-service/pkg/redis"
+	"syscall"
 	"time"
 )
 
@@ -70,6 +73,8 @@ func InitApp() *App {
 		&model.OrderModel{},
 	)
 
+	etcdInit(&cfg.Etcd)
+
 	// 初始化用户服务
 	userRepo := mysql.NewUserRepository(mySQL)
 	userService := service.NewUserService(userRepo)
@@ -90,5 +95,27 @@ func InitApp() *App {
 		UserHandler:    userHandler,
 		ProductHandler: productHandler,
 		OrderHandler:   orderHandler,
+	}
+}
+
+func etcdInit(etcdConfig *config.EtcdConfig) {
+	// 初始化服务注册中心
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	reg, _ := registry.NewEtcdRegistry(etcdConfig.Endpoints)
+	defer func(reg *registry.EtcdRegistry) {
+		err := reg.Close()
+		if err != nil {
+
+		}
+	}(reg)
+	inst := registry.ServiceInstance{
+		ID:   "api-1",          // 先写死，后面 D38 会改成 uuid/hostname+pid
+		Addr: "127.0.0.1:8080", // 你的实际监听地址
+	}
+
+	err := reg.Register(ctx, "product-service", inst, 10)
+	if err != nil {
+		log.Printf("[registry] Register failed: %v", err)
 	}
 }

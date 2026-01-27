@@ -118,3 +118,14 @@ docker-compose up -d
   * product_event_consumed 表：product 服务
   * orders 表：order 服务
   * orders.user_id 只存 id，不存用户详情；需要详情由聚合层获取或冗余快照。
+
+### 项目架构问题
+  * 为什么服务注册必须和 Lease 绑定，而不能只 put 一个 key？
+    * 注册行为的“语义保证”，避免服务注册时，服务实例已经不存在了，但是注册中心没有及时删除，只要进程活着 → key 一直存在 ，进程崩溃 / Kill → Lease 过期 → key 自动删除，你不用手写“下线逻辑”
+  * user-service 注册逻辑你准备放在哪里？（main / bootstrap / middleware？为什么）
+    * 放在 cmd/api/main.go 或 bootstrap 初始化阶段（BaseInit 之后） 
+    * 并且用 signal.NotifyContext 在退出时 cancel（让 KeepAlive goroutine 优雅退出）
+  * order-service 如果将来要发现 user-service，你准备从哪个模块调用 discovery？
+    * 放在 internal/client 或 internal/service 的“依赖方 client”里，例如： internal/client/userclient（封装 discovery + load balance + http/grpc 调用） 
+    * handler 只调用：userClient.GetProfile(ctx, userID) 这种语义化方法 
+    > 结论：handler 只做协议适配；discovery 属于 client/infra 层。
