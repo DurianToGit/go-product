@@ -41,8 +41,6 @@ func main() {
 	}
 
 	// 初始化服务注册中心
-	// ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	// defer stop()
 	reg, _ := registry.NewEtcdRegistry(cfg.Etcd.Endpoints)
 	defer func(reg *registry.EtcdRegistry) {
 		err := reg.Close()
@@ -51,11 +49,11 @@ func main() {
 		}
 	}(reg)
 	inst := registry.ServiceInstance{
-		ID:   "api-1",          // 先写死，后面 D38 会改成 uuid/hostname+pid
-		Addr: "127.0.0.1:8080", // 你的实际监听地址
+		ID:   "worker-1",    // 先写死，后面 D38 会改成 uuid/hostname+pid
+		Addr: "127.0.0.1:0", // 你的实际监听地址
 	}
 
-	rerr := reg.Register(ctx, "product-service", inst, 10)
+	rerr := reg.Register(ctx, "product-worker", inst, 10)
 	if rerr != nil {
 		log.Printf("[registry] Register failed: %v", rerr)
 	}

@@ -70,8 +70,6 @@ func InitApp() *App {
 		&model.OrderModel{},
 	)
 
-	// etcdInit(&cfg.Etcd)
-
 	// 初始化用户服务
 	userRepo := mysql.NewUserRepository(mySQL)
 	userService := service.NewUserService(userRepo)
@@ -93,8 +91,4 @@ func InitApp() *App {
 		ProductHandler: productHandler,
 		OrderHandler:   orderHandler,
 	}
-}
-
-func etcdInit(etcdConfig *config.EtcdConfig) {
-
 }
