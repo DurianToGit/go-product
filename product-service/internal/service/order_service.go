@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"go.opentelemetry.io/otel"
 	"log"
 	"product-service/internal/config"
 	"product-service/internal/domain"
@@ -31,8 +32,11 @@ func NewOrderService(repo repository.OrderRepository, productService *ProductSer
 }
 
 func (s *OrderService) Create(ctx context.Context, userID, productID int64, count int, idemKey string) (*domain.Order, error) {
-	var order *domain.Order
+	tr := otel.Tracer("order-service")
+	ctx, span := tr.Start(ctx, "OrderService.Create")
+	defer span.End()
 
+	var order *domain.Order
 	// 尝试查找已存在的订单
 	existingOrder, err := s.Repo.GetByUserIdemKey(ctx, userID, idemKey)
 	if err == nil && existingOrder != nil {
@@ -87,6 +91,9 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 }
 
 func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout time.Duration) (int64, error) {
+	tr := otel.Tracer("order-service")
+	ctx, span := tr.Start(ctx, "OrderService.CancelExpired")
+	defer span.End()
 	deadline := now.Add(-timeout)
 	num, data, err := s.Repo.CancelExpired(ctx, deadline)
 	if err != nil {

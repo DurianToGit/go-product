@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"go.opentelemetry.io/otel"
 	"log"
 	"product-service/internal/config"
 	"product-service/internal/domain"
@@ -67,6 +68,9 @@ func (s *ProductService) PrewarmProductStock(ctx context.Context, id int64) erro
 }
 
 func (s *ProductService) DeductStockSeckill(ctx context.Context, productId int64, count, userId int64, idemKey string) (int64, error) {
+	tr := otel.Tracer("product-service")
+	ctx, span := tr.Start(ctx, "ProductService.DeductStockSeckill")
+	defer span.End()
 
 	remain, err := seckill.DeductStockLua(ctx, redis.Client, productId, count)
 	cfg := config.GetRuntimeConfig()

@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"product-service/internal/bootstrap"
 	"product-service/internal/middleware"
+	otelx "product-service/internal/otel"
 	"product-service/internal/registry"
 	"product-service/internal/router"
 	"syscall"
@@ -72,6 +73,12 @@ func main() {
 		}
 	}()
 
+	shutdown, err := otelx.Init("product-service")
+	if err != nil {
+		log.Printf("[otel] Init failed: %v\n", err)
+	}
+	defer shutdown(context.Background())
+
 	<-ctx.Done()
 	log.Println("Shutting down server...")
 
@@ -80,10 +87,4 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatal("Server forced to shutdown:", err)
 	}
-
-	// 启动HTTP服务器
-	// 如果启动失败，则记录致命错误并退出程序
-	/*if err := r.Run(app.Config.App.Addr); err != nil {
-		log.Fatalln(err)
-	}*/
 }
