@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"product-service/internal/bootstrap"
 	"product-service/internal/domain"
+	otelx "product-service/internal/otel"
 	"product-service/internal/registry"
 	"product-service/internal/repository/mysql"
 	"product-service/pkg/db"
@@ -18,6 +19,7 @@ import (
 	"product-service/pkg/stream"
 	"strconv"
 	"syscall"
+	"time"
 )
 
 // 单独运行worker执行stream消费者逻辑
@@ -59,6 +61,13 @@ func main() {
 	if rerr != nil {
 		log.Printf("[registry] Register failed: %v", rerr)
 	}
+
+	shutdown, err := otelx.Init("product-worker")
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = shutdown(ctx)
+	}()
 
 	// 初始化商品服务
 	productRepo := mysql.NewProductRepository(mySQL)
