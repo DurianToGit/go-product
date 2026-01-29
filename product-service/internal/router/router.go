@@ -8,8 +8,8 @@ import (
 )
 
 func Register(r *gin.Engine, app *bootstrap.App) {
-	api := r.Group("/api")
 	r.Use(otelgin.Middleware("product-service"))
+	api := r.Group("/api")
 	api.GET("ping", handler.Ping)
 
 	InitUserRouter(api, app.UserHandler)
