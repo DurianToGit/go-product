@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	redis2 "github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"log"
 	"os/signal"
 	"product-service/internal/bootstrap"
@@ -61,12 +63,15 @@ func main() {
 	// 初始化商品服务
 	productRepo := mysql.NewProductRepository(mySQL)
 	go consumer.Consume(ctx, func(ctx context.Context, msg redis2.XMessage) error {
+		ctx2 := extractCtx(ctx, msg.Values)
+		ctx2, span := otel.Tracer("worker").Start(ctx2, "stream.consume")
+		defer span.End()
 		// 解析 values
 		eventType, _ := msg.Values["event_type"].(string)
 		if eventType == domain.ProductEventTypeStockDeducted {
-			return stockStockDeducted(ctx, msg, productRepo)
+			return stockStockDeducted(ctx2, msg, productRepo)
 		} else if eventType == domain.ProductEventTypeRestockDeducted {
-			return restockStockDeducted(ctx, msg, productRepo)
+			return restockStockDeducted(ctx2, msg, productRepo)
 		}
 		return nil
 	})
@@ -109,6 +114,21 @@ func restockStockDeducted(ctx context.Context, msg redis2.XMessage, productRepo 
 	log.Printf("收到商品库存恢复扣减事件：product_id=%d, count=%d", productID, count)
 	// 幂等 + 扣库存（事务内）
 	return productRepo.ConsumeRestockDeductEvent(ctx, rediskeys.ProductStreamKey, msg.ID, productID, count, domain.ProductEventTypeRestockDeducted)
+}
+
+func extractCtx(ctx context.Context, values map[string]any) context.Context {
+	tp, _ := values["traceparent"].(string)
+	if tp == "" {
+		return ctx
+	}
+	carrier := propagation.MapCarrier{
+		"traceparent": tp,
+	}
+	// tracestate 可选
+	if ts, ok := values["tracestate"].(string); ok && ts != "" {
+		carrier["tracestate"] = ts
+	}
+	return otel.GetTextMapPropagator().Extract(ctx, carrier)
 }
 
 func toInt64(v any) (int64, error) {

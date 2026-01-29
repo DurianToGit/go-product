@@ -3,6 +3,8 @@ package stream
 import (
 	"context"
 	"fmt"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"log"
 	"product-service/pkg/rediskeys"
 	"time"
@@ -22,10 +24,12 @@ func NewProductEventProducer(rdb *redis.Client) *ProductEventProducer {
 	}
 }
 
-func (p *ProductEventProducer) Publish(ctx context.Context, values map[string]any) error {
+func (p *ProductEventProducer) Publish(ctx context.Context, payload map[string]any) error {
+	// 1) 透传 traceparent
+	injectTraceparent(ctx, payload)
 	_, err := p.rdb.XAdd(ctx, &redis.XAddArgs{
 		Stream: p.stream,
-		Values: values,
+		Values: payload,
 	}).Result()
 	return err
 }
@@ -53,4 +57,18 @@ func SideFxKeyDeduct(userID int64, idemKey string) string {
 }
 func SideFxKeyRestock(orderID int64) string {
 	return fmt.Sprintf("order:sidefx:restock:%d", orderID)
+}
+
+func injectTraceparent(ctx context.Context, payload map[string]any) {
+	// propagation.MapCarrier 是 map[string]string
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+
+	if tp, ok := carrier["traceparent"]; ok && tp != "" {
+		payload["traceparent"] = tp
+	}
+	// 可选：tracestate
+	if ts, ok := carrier["tracestate"]; ok && ts != "" {
+		payload["tracestate"] = ts
+	}
 }

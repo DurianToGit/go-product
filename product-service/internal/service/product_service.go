@@ -86,6 +86,8 @@ func (s *ProductService) DeductStockSeckill(ctx context.Context, productId int64
 		ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
 		defer cancel()
 		onceKey := stream.SideFxKeyDeduct(userId, idemKey)
+		ctx2, span2 := otel.Tracer("stream").Start(ctx2, "stream.publish")
+		defer span2.End()
 		err2 := s.productEventProducer.PublishOnce(ctx2, onceKey, map[string]any{
 			"product_id": productId,
 			"user_id":    userId,
