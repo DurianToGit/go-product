@@ -17,6 +17,8 @@ var (
 	ErrDataNotFound = &Error{Code: 40008, Msg: "Data Not Found"}
 	// too many requests
 	ErrTooManyRequests = &Error{Code: 40009, Msg: "Too Many Requests"}
+	// user rate limit exceeded
+	ErrUserRateLimitExceeded = &Error{Code: 40010, Msg: "User Rate Limit Exceeded"}
 
 	ProductErrNoEnoughStock = &Error{Code: 40101, Msg: "No Enough Stock"}
 	// 产品名称不能为空

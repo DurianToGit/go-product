@@ -25,11 +25,12 @@ func (r *UserRepository) Register(ctx context.Context, u *model.UserModel) (*dom
 	if err == nil {
 		return nil, errno.UsernameAlreadyExist
 	}
+	u.Password = utils.HashPassword(u.Password)
 	err = r.db.WithContext(ctx).Create(u).Error
 	if err != nil {
 		return nil, err
 	}
-	return toUserDomain(&user), err
+	return toUserDomain(u), err
 }
 
 func (r *UserRepository) Login(ctx context.Context, username string, password string) (*domain.User, error) {
