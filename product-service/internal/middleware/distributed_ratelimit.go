@@ -5,6 +5,7 @@ import (
 	"log"
 	"product-service/internal/errno"
 	"product-service/internal/response"
+	"product-service/pkg/breaker"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -41,6 +42,13 @@ func DistributedRateLimit(limiter *ratelimit.RedisLimiter, cfg DistributedRateLi
 			cfg.GlobalWindow,
 		)
 		if err != nil {
+			if breaker.IsCircuitOpen(err) {
+				// 直接降级/快速返回
+				response.ErrorWithErrno(c, errno.ErrTooManyRequests)
+				log.Printf("全局限流已超: %v", err)
+				c.Abort()
+				return
+			}
 			response.ErrorWithErrno(c, errno.ServerError)
 			c.Abort()
 			return
@@ -74,6 +82,13 @@ func DistributedRateLimit(limiter *ratelimit.RedisLimiter, cfg DistributedRateLi
 				cfg.UserWindow,
 			)
 			if err != nil {
+				if breaker.IsCircuitOpen(err) {
+					// 直接降级/快速返回
+					response.ErrorWithErrno(c, errno.ErrUserRateLimitExceeded)
+					log.Printf("用户限流已超: %v", err)
+					c.Abort()
+					return
+				}
 				response.ErrorWithErrno(c, errno.ServerError)
 				c.Abort()
 				return

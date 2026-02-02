@@ -13,7 +13,7 @@ func GetBytes(ctx context.Context, key string) ([]byte, error) {
 		err error
 	)
 	err = Do(rctx, func() error {
-		b, err = GetBytes(rctx, key)
+		b, err = Client.Get(rctx, key).Bytes()
 		return err
 	})
 	return b, err
