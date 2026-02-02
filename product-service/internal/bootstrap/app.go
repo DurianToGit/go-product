@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/joho/godotenv"
+	redis2 "github.com/redis/go-redis/v9"
 	"log"
 	"math/rand"
 	"product-service/api/handler"
@@ -12,6 +13,7 @@ import (
 	"product-service/internal/repository/mysql/model"
 	"product-service/internal/service"
 	"product-service/internal/validator"
+	"product-service/pkg/breaker"
 	"product-service/pkg/db"
 	"product-service/pkg/redis"
 	"time"
@@ -22,6 +24,9 @@ type App struct {
 	UserHandler    *handler.UserHandler
 	ProductHandler *handler.ProductHandler
 	OrderHandler   *handler.OrderHandler
+
+	RedisClient  *redis2.Client
+	RedisBreaker *breaker.CircuitBreaker
 }
 
 func BaseInit() *config.Config {
@@ -61,7 +66,10 @@ func InitApp() *App {
 		cfg.DB.DBName,
 	)
 	mySQL := db.InitMySQL(dsn)
-	redis.InitRedis(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
+	rdb := redis.InitRedis(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
+	// 熔断器
+	redisBreaker := breaker.New(5, 10*time.Second) // // 连续失败 5 次, 熔断器开启 10 秒
+	redis.SetBreaker(redisBreaker)
 
 	// 迁移
 	_ = mySQL.AutoMigrate(
@@ -90,5 +98,7 @@ func InitApp() *App {
 		UserHandler:    userHandler,
 		ProductHandler: productHandler,
 		OrderHandler:   orderHandler,
+		RedisClient:    rdb,
+		RedisBreaker:   redisBreaker,
 	}
 }

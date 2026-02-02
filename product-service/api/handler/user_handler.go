@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
+	"log"
 	"product-service/internal/auth"
 	"product-service/internal/errno"
 	"product-service/internal/response"
@@ -85,8 +86,18 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 	key := rediskeys.DailyLoginKey(time.Now().Format("20060102"))
-	_ = redis.Client.SAdd(c, key, user.ID).Err()
-	_ = redis.Client.Expire(c, key, 48*time.Hour).Err()
+	errD := redis.Do(c, func() error {
+		return redis.Client.SAdd(c, key, user.ID).Err()
+	})
+	if errD != nil {
+		log.Printf("redis error: %v", errD)
+	}
+	errE := redis.Do(c, func() error {
+		return redis.Client.Expire(c, key, 48*time.Hour).Err()
+	})
+	if errE != nil {
+		log.Printf("redis error: %v", errE)
+	}
 	response.Success(c, gin.H{
 		"token": token,
 	})

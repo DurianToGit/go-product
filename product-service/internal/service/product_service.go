@@ -60,7 +60,9 @@ func (s *ProductService) PrewarmProductStock(ctx context.Context, id int64) erro
 	if err != nil {
 		return err
 	}
-	err = redis.Client.Set(ctx, rediskeys.ProductStockKey(id), data.Stock, 0).Err()
+	err = redis.Do(ctx, func() error {
+		return redis.Client.Set(ctx, rediskeys.ProductStockKey(id), data.Stock, 0).Err()
+	})
 	if err != nil {
 		return err
 	}

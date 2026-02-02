@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	redisPkg "product-service/pkg/redis"
 )
 
 var fixedWindowLua = redis.NewScript(`
@@ -38,13 +39,20 @@ func (l *RedisLimiter) Allow(
 	window time.Duration,
 ) (bool, error) {
 
-	res, err := fixedWindowLua.Run(
-		ctx,
-		l.rdb,
-		[]string{key},
-		limit,
-		window.Milliseconds(),
-	).Int()
+	var (
+		res int
+		err error
+	)
+	err = redisPkg.Do(ctx, func() error {
+		res, err = fixedWindowLua.Run(
+			ctx,
+			l.rdb,
+			[]string{key},
+			limit,
+			window.Milliseconds(),
+		).Int()
+		return err
+	})
 
 	if err != nil {
 		return false, err

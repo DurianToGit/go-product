@@ -40,7 +40,12 @@ func DistributedRateLimit(limiter *ratelimit.RedisLimiter, cfg DistributedRateLi
 			cfg.GlobalLimit,
 			cfg.GlobalWindow,
 		)
-		if err != nil || !ok {
+		if err != nil {
+			response.ErrorWithErrno(c, errno.ServerError)
+			c.Abort()
+			return
+		}
+		if !ok {
 			/*c.AbortWithStatusJSON(
 				http.StatusTooManyRequests,
 				gin.H{"message": "global rate limit exceeded"},
@@ -68,7 +73,12 @@ func DistributedRateLimit(limiter *ratelimit.RedisLimiter, cfg DistributedRateLi
 				cfg.UserLimit,
 				cfg.UserWindow,
 			)
-			if err != nil || !ok {
+			if err != nil {
+				response.ErrorWithErrno(c, errno.ServerError)
+				c.Abort()
+				return
+			}
+			if !ok {
 				// c.AbortWithStatusJSON(
 				// 	http.StatusTooManyRequests,
 				// 	gin.H{"message": "user rate limit exceeded"},

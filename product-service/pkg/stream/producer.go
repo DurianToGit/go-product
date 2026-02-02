@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	redisPkg "product-service/pkg/redis"
 )
 
 type ProductEventProducer struct {
@@ -27,24 +28,31 @@ func NewProductEventProducer(rdb *redis.Client) *ProductEventProducer {
 func (p *ProductEventProducer) Publish(ctx context.Context, payload map[string]any) error {
 	// 1) 透传 traceparent
 	injectTraceparent(ctx, payload)
-	_, err := p.rdb.XAdd(ctx, &redis.XAddArgs{
-		Stream: p.stream,
-		Values: payload,
-	}).Result()
+	err := redisPkg.Do(ctx, func() error {
+		_, err := p.rdb.XAdd(ctx, &redis.XAddArgs{
+			Stream: p.stream,
+			Values: payload,
+		}).Result()
+		return err
+	})
+
 	return err
 }
 
 // PublishOnce: 幂等发布（SETNX 门闩）
 func (p *ProductEventProducer) PublishOnce(ctx context.Context, onceKey string, payload map[string]any, ttl time.Duration) error {
-	// 1) SETNX 门闩
-	ok, err := p.rdb.SetNX(ctx, onceKey, 1, ttl).Result()
+	err := redisPkg.Do(ctx, func() error {
+		// 1) SETNX 门闩
+		ok, err := p.rdb.SetNX(ctx, onceKey, 1, ttl).Result()
+		if !ok {
+			// 已发布过（或并发下别人拿到了锁），直接视为成功
+			log.Printf("publish skipped due to onceKey exists: %s", onceKey)
+			return nil
+		}
+		return err
+	})
 	if err != nil {
 		return err
-	}
-	if !ok {
-		// 已发布过（或并发下别人拿到了锁），直接视为成功
-		log.Printf("publish skipped due to onceKey exists: %s", onceKey)
-		return nil
 	}
 
 	// 2) 真正 publish（复用你原 Publish）

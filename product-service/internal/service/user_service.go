@@ -65,7 +65,15 @@ func (s *UserService) GetByUserId(ctx context.Context, userId int64) (*domain.Us
 	// singleflight 合并回源
 	v, err, _ := userSF.Do(key, func() (any, error) {
 		// redis
-		val, rerr := redis.Client.Get(ctx, key).Bytes()
+		var (
+			val  []byte
+			rerr error
+		)
+		rerr = redis.Do(ctx, func() error {
+			val, rerr = redis.Client.Get(ctx, key).Bytes()
+			return rerr
+		})
+		// val, rerr := redis.Client.Get(ctx, key).Bytes()
 		if rerr == nil {
 			s.localCache.Set(key, val)
 			if string(val) == domain.DataCacheNil {
@@ -92,7 +100,9 @@ func (s *UserService) GetByUserId(ctx context.Context, userId int64) (*domain.Us
 		s.localCache.Set(key, data)
 
 		ttl := 5*time.Minute + time.Duration(rand.Intn(60))*time.Second
-		cerr := redis.Client.Set(ctx, key, data, ttl).Err()
+		cerr := redis.Do(ctx, func() error {
+			return redis.Client.Set(ctx, key, data, ttl).Err()
+		})
 		if cerr != nil {
 			return nil, cerr
 		}
