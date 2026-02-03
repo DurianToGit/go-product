@@ -19,6 +19,8 @@ var (
 	ErrTooManyRequests = &Error{Code: 40009, Msg: "Too Many Requests"}
 	// user rate limit exceeded
 	ErrUserRateLimitExceeded = &Error{Code: 40010, Msg: "User Rate Limit Exceeded"}
+	// 依赖不可用
+	ErrDependencyUnavailable = &Error{Code: 40011, Msg: "Dependency Unavailable"}
 
 	ProductErrNoEnoughStock = &Error{Code: 40101, Msg: "No Enough Stock"}
 	// 产品名称不能为空

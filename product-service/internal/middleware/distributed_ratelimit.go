@@ -44,8 +44,8 @@ func DistributedRateLimit(limiter *ratelimit.RedisLimiter, cfg DistributedRateLi
 		if err != nil {
 			if breaker.IsCircuitOpen(err) {
 				// 直接降级/快速返回
-				response.ErrorWithErrno(c, errno.ErrTooManyRequests)
-				log.Printf("全局限流已超: %v", err)
+				response.ErrorWithErrno(c, errno.ErrDependencyUnavailable)
+				log.Printf("依赖不可用: %v", err)
 				c.Abort()
 				return
 			}
@@ -84,8 +84,8 @@ func DistributedRateLimit(limiter *ratelimit.RedisLimiter, cfg DistributedRateLi
 			if err != nil {
 				if breaker.IsCircuitOpen(err) {
 					// 直接降级/快速返回
-					response.ErrorWithErrno(c, errno.ErrUserRateLimitExceeded)
-					log.Printf("用户限流已超: %v", err)
+					response.ErrorWithErrno(c, errno.ErrDependencyUnavailable)
+					log.Printf("依赖不可用1: %v", err)
 					c.Abort()
 					return
 				}
