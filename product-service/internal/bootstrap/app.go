@@ -58,9 +58,11 @@ func BaseInit() *config.Config {
 			log.Println("load config success")
 		}
 		log.Println(1233333)
+		ctx2, cancel2 := context.WithCancel(context.Background())
+		defer cancel2()
 
 		// 后台 etcd watch
-		go loader.Watch(ctx)
+		go loader.Watch(ctx2)
 	}
 
 	return cfg
