@@ -49,7 +49,7 @@ func DistributedRateLimit(limiter *ratelimit.RedisLimiter, cfg DistributedRateLi
 				c.Abort()
 				return
 			}
-			response.ErrorWithErrno(c, errno.ServerError)
+			response.ErrorWithErrno(c, errno.ErrDependencyUnavailable)
 			c.Abort()
 			return
 		}
@@ -89,7 +89,7 @@ func DistributedRateLimit(limiter *ratelimit.RedisLimiter, cfg DistributedRateLi
 					c.Abort()
 					return
 				}
-				response.ErrorWithErrno(c, errno.ServerError)
+				response.ErrorWithErrno(c, errno.ErrDependencyUnavailable)
 				c.Abort()
 				return
 			}

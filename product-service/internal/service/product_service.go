@@ -100,6 +100,7 @@ func (s *ProductService) DeductStockSeckill(ctx context.Context, productId int64
 		log.Printf("publish product event, product_id=%d,count=%d,user_id=%d", productId, count, userId)
 		if err2 != nil {
 			log.Printf("publish product event failed, err=%v, product_id=%d", err2, productId)
+			return 0, errno.ErrDependencyUnavailable
 		}
 		return remain, nil
 	}

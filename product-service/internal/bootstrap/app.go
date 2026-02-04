@@ -40,18 +40,28 @@ func BaseInit() *config.Config {
 	cfg := config.Load()
 	// etcd 加载器
 	loader, err := config.NewEtcdLoader(cfg.Etcd.Endpoints)
+	log.Println("初始化etcd 加载器")
 	if err != nil {
-		log.Fatalf("init etcd failed: %v", err)
-	}
+		log.Println("初始化失败")
+		log.Printf("init etcd failed: %v", err)
+		config.SetRuntimeConfig(config.DefaultRuntimeConfig())
+	} else {
+		log.Println("初始化成功")
+		log.Println(loader)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		// 启动时加载
+		if err := loader.LoadOnce(ctx); err != nil {
+			log.Printf("load config failed: %v", err)
+			config.SetRuntimeConfig(config.DefaultRuntimeConfig())
+		} else {
+			log.Println("load config success")
+		}
+		log.Println(1233333)
 
-	ctx := context.Background()
-	// 启动时加载
-	if err := loader.LoadOnce(ctx); err != nil {
-		log.Fatalf("load config failed: %v", err)
+		// 后台 etcd watch
+		go loader.Watch(ctx)
 	}
-
-	// 后台 etcd watch
-	go loader.Watch(ctx)
 
 	return cfg
 }

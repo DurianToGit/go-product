@@ -117,6 +117,7 @@ func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout
 		}, time.Duration(cfg.OrderCancelTimeoutSec)*time.Second)
 		if err2 != nil {
 			log.Printf("恢复库存流发送失败:%v", err2)
+			return num, errno.ErrDependencyUnavailable
 		}
 	}
 	return num, nil

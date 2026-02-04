@@ -6,6 +6,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"log"
+	"product-service/internal/errno"
 	"product-service/pkg/rediskeys"
 	"time"
 
@@ -35,6 +36,9 @@ func (p *ProductEventProducer) Publish(ctx context.Context, payload map[string]a
 		}).Result()
 		return err
 	})
+	if err != nil {
+		return errno.ErrDependencyUnavailable
+	}
 
 	return err
 }
@@ -52,7 +56,7 @@ func (p *ProductEventProducer) PublishOnce(ctx context.Context, onceKey string, 
 		return err
 	})
 	if err != nil {
-		return err
+		return errno.ErrDependencyUnavailable
 	}
 
 	// 2) 真正 publish（复用你原 Publish）
