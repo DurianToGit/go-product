@@ -27,6 +27,8 @@ type App struct {
 
 	RedisClient  *redis2.Client
 	RedisBreaker *breaker.CircuitBreaker
+
+	EtcdLoader *config.EtcdLoader
 }
 
 func BaseInit() *config.Config {
@@ -38,6 +40,12 @@ func BaseInit() *config.Config {
 	rand.Seed(time.Now().UnixNano())
 	// 加载配置
 	cfg := config.Load()
+
+	return cfg
+}
+
+func InitApp() *App {
+	cfg := BaseInit()
 	// etcd 加载器
 	loader, err := config.NewEtcdLoader(cfg.Etcd.Endpoints)
 	log.Println("初始化etcd 加载器")
@@ -58,18 +66,11 @@ func BaseInit() *config.Config {
 			log.Println("load config success")
 		}
 		log.Println(1233333)
-		ctx2, cancel2 := context.WithCancel(context.Background())
-		defer cancel2()
+		ctx2, _ := context.WithCancel(context.Background())
 
 		// 后台 etcd watch
 		go loader.Watch(ctx2)
 	}
-
-	return cfg
-}
-
-func InitApp() *App {
-	cfg := BaseInit()
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.DB.DBUser,
 		cfg.DB.DBPass,
@@ -112,5 +113,6 @@ func InitApp() *App {
 		OrderHandler:   orderHandler,
 		RedisClient:    rdb,
 		RedisBreaker:   redisBreaker,
+		EtcdLoader:     loader,
 	}
 }

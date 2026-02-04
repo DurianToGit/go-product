@@ -9,6 +9,7 @@ import (
 	"log"
 	"os/signal"
 	"product-service/internal/bootstrap"
+	"product-service/internal/config"
 	"product-service/internal/domain"
 	otelx "product-service/internal/otel"
 	"product-service/internal/registry"
@@ -45,21 +46,19 @@ func main() {
 	}
 
 	// 初始化服务注册中心
-	reg, _ := registry.NewEtcdRegistry(cfg.Etcd.Endpoints)
-	defer func(reg *registry.EtcdRegistry) {
-		err := reg.Close()
-		if err != nil {
-
+	reg, err := config.NewEtcdLoader(cfg.Etcd.Endpoints)
+	if err != nil {
+		log.Printf("初始化注册中心失败：%v", err)
+	} else {
+		inst := registry.ServiceInstance{
+			ID:   "worker-1",    // 先写死，后面 D38 会改成 uuid/hostname+pid
+			Addr: "127.0.0.1:0", // 你的实际监听地址
 		}
-	}(reg)
-	inst := registry.ServiceInstance{
-		ID:   "worker-1",    // 先写死，后面 D38 会改成 uuid/hostname+pid
-		Addr: "127.0.0.1:0", // 你的实际监听地址
-	}
 
-	rerr := reg.Register(ctx, "product-worker", inst, 10)
-	if rerr != nil {
-		log.Printf("[registry] Register failed: %v", rerr)
+		rerr := reg.Register(ctx, "product-worker", inst, 10)
+		if rerr != nil {
+			log.Printf("[registry] Register failed: %v", rerr)
+		}
 	}
 
 	shutdown, err := otelx.Init("product-worker")
@@ -88,6 +87,15 @@ func main() {
 	// 等待退出信号
 	log.Println("Worker 启动成功，开始监听 stream...")
 	<-ctx.Done()
+	if reg != nil {
+		defer func(reg *config.EtcdLoader) {
+			err := reg.Close()
+			if err != nil {
+
+			}
+		}(reg)
+	}
+
 	log.Println("收到退出信号，正在关闭...")
 }
 

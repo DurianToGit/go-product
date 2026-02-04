@@ -2,7 +2,10 @@ package config
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
+	"product-service/internal/registry"
 	"product-service/pkg/breaker"
 	"strconv"
 	"time"
@@ -18,14 +21,24 @@ type EtcdLoader struct {
 func NewEtcdLoader(endpoints []string) (*EtcdLoader, error) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
-		DialTimeout: 800 * time.Millisecond, // ✅ 关键
+		DialTimeout: 2 * time.Second, // 增加连接超时时间
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	// 使用带超时的上下文进行健康检查
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err = cli.Get(ctx, "health")
+	if err != nil {
+		return nil, fmt.Errorf("etcd is unreachable: %w", err)
+	}
+
 	return &EtcdLoader{
 		cli: cli,
-		cb:  breaker.New(5, 10*time.Second), // 连续失败5次，熔断10秒
+		cb:  breaker.New(5, 10*time.Second),
 	}, nil
 }
 
@@ -134,4 +147,50 @@ func (l *EtcdLoader) get(ctx context.Context, key string) (string, error) {
 	})
 
 	return val, err
+}
+
+func (r *EtcdLoader) Register(ctx context.Context, serviceName string, inst registry.ServiceInstance, ttl int64) error {
+	if ttl <= 0 {
+		ttl = 10
+	}
+	// 1) 创建租约
+	leaseResp, err := r.cli.Grant(ctx, ttl)
+	if err != nil {
+		return err
+	}
+	// 2)写入key 绑定lease
+	key := fmt.Sprintf("/services/%s/%s", serviceName, inst.ID)
+	valByBets, _ := json.Marshal(inst)
+	if _, err = r.cli.Put(ctx, key, string(valByBets), clientv3.WithLease(leaseResp.ID)); err != nil {
+		return err
+	}
+	log.Printf("[registry] Registered %s => %s", key, inst.Addr)
+
+	// 3) keepalive (后台续租）
+	kaCh, err := r.cli.KeepAlive(ctx, leaseResp.ID)
+	if err != nil {
+		return err
+	}
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				// ctx cancel 时 keepalive 会自动停止
+				log.Printf("[registry] keepalive canceled: %s/%s", serviceName, inst.ID)
+				return
+			case ka, ok := <-kaCh:
+				if !ok {
+					log.Printf("[registry] keepalive channel closed: %s/%s", serviceName, inst.ID)
+					return
+				}
+				_ = ka // 这里只是保持通道消费，必要时可以打 debug
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (r *EtcdLoader) Close() error {
+	return r.cli.Close()
 }
