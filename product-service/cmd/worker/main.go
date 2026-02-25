@@ -6,11 +6,13 @@ import (
 	redis2 "github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
+	"go.uber.org/zap"
 	"log"
 	"os/signal"
 	"product-service/internal/bootstrap"
 	"product-service/internal/config"
 	"product-service/internal/domain"
+	"product-service/internal/logger"
 	otelx "product-service/internal/otel"
 	"product-service/internal/registry"
 	"product-service/internal/repository/mysql"
@@ -26,6 +28,8 @@ import (
 // 单独运行worker执行stream消费者逻辑
 
 func main() {
+	logger.InitFromEnv("product-worker")
+	defer logger.Sync()
 	cfg := bootstrap.BaseInit()
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.DB.DBUser,
@@ -41,7 +45,8 @@ func main() {
 	defer stop()
 	err := consumer.InitGroup(ctx)
 	if err != nil {
-		log.Println("init group error:", err)
+		log.Println("", err)
+		logger.L().Error("init group error", zap.Error(err))
 		return
 	}
 
@@ -85,7 +90,7 @@ func main() {
 	})
 
 	// 等待退出信号
-	log.Println("Worker 启动成功，开始监听 stream...")
+	logger.L().Info("Worker 启动成功，开始监听 stream...")
 	<-ctx.Done()
 	if reg != nil {
 		defer func(reg *config.EtcdLoader) {
@@ -96,7 +101,7 @@ func main() {
 		}(reg)
 	}
 
-	log.Println("收到退出信号，正在关闭...")
+	logger.L().Info("收到退出信号，正在关闭...")
 }
 
 // 商品库存扣减

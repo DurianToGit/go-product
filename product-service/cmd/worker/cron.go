@@ -6,6 +6,7 @@ import (
 	"log"
 	"os/signal"
 	"product-service/internal/bootstrap"
+	"product-service/internal/logger"
 	"product-service/internal/repository/mysql"
 	"product-service/internal/service"
 	"product-service/pkg/db"
@@ -15,6 +16,8 @@ import (
 )
 
 func main() {
+	logger.InitFromEnv("product-worker-cron")
+	defer logger.Sync()
 	cfg := bootstrap.BaseInit()
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.DB.DBUser,

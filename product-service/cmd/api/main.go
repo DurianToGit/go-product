@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"product-service/internal/bootstrap"
 	"product-service/internal/config"
+	"product-service/internal/logger"
 	"product-service/internal/middleware"
 	otelx "product-service/internal/otel"
 	"product-service/internal/registry"
@@ -19,6 +21,8 @@ import (
 )
 
 func main() {
+	logger.InitFromEnv("product-service")
+	defer logger.Sync()
 
 	app := bootstrap.InitApp()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -38,17 +42,22 @@ func main() {
 		// 注册服务
 		rerr := app.EtcdLoader.Register(ctx, "product-service", inst, 10)
 		if rerr != nil {
-			log.Printf("[registry] Register failed: %v\n", rerr)
+			logger.L().Warn("registry_register_failed", zap.Error(rerr))
 		}
 	}
 
 	// 创建Gin引擎实例
 	r := gin.New()
 	// 注册中间件：日志、耗时统计、异常恢复
+	//r.Use(
+	//	middleware.Logger(),   // 日志中间件：记录请求日志
+	//	middleware.Cost(),     // 耗时中间件：统计请求处理时间
+	//	middleware.Recovery(), // 恢复中间件：捕获panic并恢复
+	//)
 	r.Use(
-		middleware.Logger(),   // 日志中间件：记录请求日志
-		middleware.Cost(),     // 耗时中间件：统计请求处理时间
-		middleware.Recovery(), // 恢复中间件：捕获panic并恢复
+		middleware.RequestID(),
+		middleware.AccessLog(),
+		middleware.RecoveryZap(),
 	)
 
 	// 注册路由：将所有API路由注册到引擎
@@ -59,11 +68,11 @@ func main() {
 		Addr:    app.Config.App.Addr,
 		Handler: r,
 	}
-	log.Printf("Server listening on %s\n", app.Config.App.Addr)
+	logger.L().Info("server_listening", zap.String("addr", app.Config.App.Addr))
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			logger.L().Error("server_listen_failed", zap.Error(err))
 		}
 	}()
 
@@ -79,15 +88,16 @@ func main() {
 		defer func(reg *config.EtcdLoader) {
 			err = reg.Close()
 			if err != nil {
-				log.Printf("[registry] Close failed: %v\n", err)
+				logger.L().Fatal("[registry] Close failed: %v\n", zap.Error(err))
 			}
 		}(app.EtcdLoader)
 	}
 
-	log.Println("Shutting down server...")
+	logger.L().Info("Shutting down server...")
 
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel2()
+	logger.L().Info("server_shutting_down")
 	if err = srv.Shutdown(ctx2); err != nil {
 		log.Fatal("Server forced to shutdown:", err)
 	}
