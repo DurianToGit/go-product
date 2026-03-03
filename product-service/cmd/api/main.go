@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -88,7 +87,7 @@ func main() {
 		defer func(reg *config.EtcdLoader) {
 			err = reg.Close()
 			if err != nil {
-				logger.L().Fatal("[registry] Close failed: %v\n", zap.Error(err))
+				logger.L().Error("[registry] Close failed.\n", zap.Error(err))
 			}
 		}(app.EtcdLoader)
 	}
@@ -99,6 +98,6 @@ func main() {
 	defer cancel2()
 	logger.L().Info("server_shutting_down")
 	if err = srv.Shutdown(ctx2); err != nil {
-		log.Fatal("Server forced to shutdown:", err)
+		logger.L().Error("Server forced to shutdown.", zap.Error(err))
 	}
 }

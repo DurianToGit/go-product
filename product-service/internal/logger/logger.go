@@ -59,7 +59,7 @@ func Init(opt Options) *zap.Logger {
 
 	// 关键：把标准库 log 重定向到 zap（收口遗留 log.Printf）
 	// 会把 log.Print* 输出变成 zap 的 Info 级别
-	_ = zap.RedirectStdLogAt(global, zap.InfoLevel)
+	_, _ = zap.RedirectStdLogAt(global, zap.InfoLevel)
 
 	return global
 }

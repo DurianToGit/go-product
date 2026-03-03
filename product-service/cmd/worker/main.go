@@ -45,7 +45,6 @@ func main() {
 	defer stop()
 	err := consumer.InitGroup(ctx)
 	if err != nil {
-		log.Println("", err)
 		logger.L().Error("init group error", zap.Error(err))
 		return
 	}
