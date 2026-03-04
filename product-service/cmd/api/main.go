@@ -10,11 +10,11 @@ import (
 	"os/signal"
 	"product-service/internal/bootstrap"
 	"product-service/internal/config"
-	"product-service/internal/logger"
-	"product-service/internal/middleware"
 	otelx "product-service/internal/otel"
 	"product-service/internal/registry"
 	"product-service/internal/router"
+	"product-service/pkg/logger"
+	"product-service/pkg/middleware"
 	"syscall"
 	"time"
 )

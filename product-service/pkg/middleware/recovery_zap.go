@@ -3,8 +3,8 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"product-service/pkg/logger"
 
-	"product-service/internal/logger"
 	"product-service/internal/response"
 )
 
