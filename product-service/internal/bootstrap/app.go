@@ -16,6 +16,10 @@ import (
 	"product-service/pkg/breaker"
 	"product-service/pkg/db"
 	"product-service/pkg/redis"
+	handlerOrder "product-service/services/order/handler"
+	mysqlOrder "product-service/services/order/repository/mysql"
+	modelOrder "product-service/services/order/repository/mysql/model"
+	serviceOrder "product-service/services/order/service"
 	"time"
 )
 
@@ -23,7 +27,7 @@ type App struct {
 	Config         *config.Config
 	UserHandler    *handler.UserHandler
 	ProductHandler *handler.ProductHandler
-	OrderHandler   *handler.OrderHandler
+	OrderHandler   *handlerOrder.OrderHandler
 
 	RedisClient  *redis2.Client
 	RedisBreaker *breaker.CircuitBreaker
@@ -88,7 +92,7 @@ func InitApp() *App {
 	_ = mySQL.AutoMigrate(
 		&model.ProductModel{},
 		&model.ProductEventConsumedModel{},
-		&model.OrderModel{},
+		&modelOrder.OrderModel{},
 	)
 
 	// 初始化用户服务
@@ -102,9 +106,9 @@ func InitApp() *App {
 	productHandler := handler.NewProductHandler(productService)
 
 	// 初始化订单服务
-	orderRepo := mysql.NewOrderRepository(mySQL)
-	orderService := service.NewOrderService(orderRepo, productService)
-	orderHandler := handler.NewOrderHandler(orderService)
+	orderRepo := mysqlOrder.NewOrderRepository(mySQL)
+	orderService := serviceOrder.NewOrderService(orderRepo)
+	orderHandler := handlerOrder.NewOrderHandler(orderService)
 
 	return &App{
 		Config:         cfg,

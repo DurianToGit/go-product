@@ -7,6 +7,7 @@ import (
 	"product-service/internal/middleware"
 	"product-service/pkg/ratelimit"
 	"product-service/pkg/redis"
+	orderRouter "product-service/services/order/router"
 	"time"
 )
 
@@ -33,5 +34,5 @@ func Register(r *gin.Engine, app *bootstrap.App) {
 
 	InitProductRouter(api, app.ProductHandler)
 
-	InitOrderRouter(api, app.OrderHandler)
+	orderRouter.InitOrderRouter(api, app.OrderHandler)
 }

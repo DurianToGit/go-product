@@ -24,3 +24,7 @@
 * POST /v1/orders/:id/pay（D46 才完善）
 ## 依赖关系（一句话）
 order-service 同步调用 product-service：
+
+---
+
+* D37.3 本阶段迁移order写链路
