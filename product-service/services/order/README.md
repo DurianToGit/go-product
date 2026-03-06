@@ -28,3 +28,7 @@ order-service 同步调用 product-service：
 ---
 
 * D37.3 本阶段迁移order写链路
+* services/order 当前阶段暂时依赖 internal/domain、internal/errno、internal/middleware 
+* 后续 D38/D39 再继续收敛
+* D37.3 开始将库存扣减写链路向 order-service 收口
+* 若当前仍存在过渡调用，后续继续迁移至 order-service 内部实现

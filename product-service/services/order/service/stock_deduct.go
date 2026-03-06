@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"go.opentelemetry.io/otel"
+	"go.uber.org/zap"
 	"log"
 	"product-service/internal/config"
 	"product-service/internal/domain"
 	"product-service/internal/errno"
+	"product-service/pkg/logger"
 	"product-service/pkg/redis"
 	"product-service/pkg/seckill"
 	"product-service/pkg/stream"
@@ -42,8 +44,12 @@ func (s *OrderService) DeductStockSeckill(ctx context.Context, productId int64, 
 			"source":     "seckill",
 		}, time.Duration(cfg.OrderCancelTimeoutSec)*time.Second)
 		log.Printf("publish product event, product_id=%d,count=%d,user_id=%d", productId, count, userId)
+		logger.L().Info("publish product event",
+			zap.Int64("product_id", productId),
+			zap.Int64("count", count),
+			zap.Int64("user_id", userId))
 		if err2 != nil {
-			log.Printf("publish product event failed, err=%v, product_id=%d", err2, productId)
+			logger.L().Error("publish product event failed", zap.Error(err), zap.Int64("product_id", productId))
 			return 0, errno.ErrDependencyUnavailable
 		}
 		return remain, nil

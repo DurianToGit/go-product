@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"go.opentelemetry.io/otel"
+	"go.uber.org/zap"
 	"log"
 	"product-service/internal/config"
 	"product-service/internal/domain"
 	"product-service/internal/errno"
+	"product-service/pkg/logger"
 	"product-service/pkg/redis"
 	"product-service/pkg/stream"
 	"product-service/pkg/utils"
@@ -47,7 +49,7 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 
 	// 如果不是记录不存在的错误，则返回错误
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "not found") {
-		log.Printf("查找订单失败:%v", err)
+		logger.L().Error("查找订单失败", zap.Error(err))
 		return nil, err
 	}
 
@@ -71,7 +73,7 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 				return existOrder, nil
 			}
 		}
-		log.Printf("创建订单失败:%v", err)
+		logger.L().Error("查找订单失败", zap.Error(err))
 		return nil, err
 	}
 
@@ -80,7 +82,7 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 	if err != nil {
 		derr := s.Repo.Delete(ctx, result.ID)
 		if derr != nil {
-			log.Printf("扣库存失败[%v]后，删除订单失败:%v", err, derr)
+			logger.L().Error("扣库存失败，删除订单失败。", zap.Error(err), zap.Error(derr))
 			return nil, derr
 		}
 		return nil, err
@@ -114,7 +116,7 @@ func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout
 			"source":     "cancelExpiredOrder",
 		}, time.Duration(cfg.OrderCancelTimeoutSec)*time.Second)
 		if err2 != nil {
-			log.Printf("恢复库存流发送失败:%v", err2)
+			logger.L().Error("恢复库存流发送失败", zap.Error(err2))
 			return num, errno.ErrDependencyUnavailable
 		}
 	}

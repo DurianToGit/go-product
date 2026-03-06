@@ -3,11 +3,12 @@ package mysql
 import (
 	"context"
 	"errors"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"log"
 	"product-service/internal/domain"
 	"product-service/internal/errno"
-	"product-service/internal/repository/mysql/model"
+	"product-service/pkg/logger"
+	"product-service/services/order/repository/mysql/model"
 	"time"
 )
 
@@ -33,7 +34,7 @@ func (r *OrderRepository) Create(ctx context.Context, order *domain.Order) (*dom
 	if err != nil {
 		return nil, err
 	}
-	log.Println("创建的订单ID:", m.ID)
+	logger.L().Info("创建的订单ID", zap.Any("id", m.ID))
 	return m.ToOrderDomain(), err
 }
 
@@ -73,7 +74,7 @@ func (r *OrderRepository) CancelExpired(ctx context.Context, deadline time.Time)
 	var ids []int64
 	for _, v := range data {
 		ids = append(ids, v.ID)
-		log.Println("取消的订单ID:", v.ID)
+		logger.L().Info("取消的订单ID", zap.Any("id", v.ID))
 	}
 	tx2 := r.db.WithContext(ctx).Model(&model.OrderModel{}).
 		Where("id in ?", ids).
