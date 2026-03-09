@@ -3,11 +3,12 @@ package handler
 import (
 	"errors"
 	"fmt"
-	"product-service/internal/domain"
-	"product-service/internal/dto"
 	"product-service/internal/errno"
 	"product-service/internal/response"
-	"product-service/internal/service"
+	"product-service/pkg/utils"
+	"product-service/services/product/domain"
+	"product-service/services/product/dto"
+	"product-service/services/product/service"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -50,7 +51,7 @@ func NewProductHandler(svc *service.ProductService) *ProductHandler {
 
 func (h *ProductHandler) List(c *gin.Context) {
 	var req ProductReq
-	if !BindAndValidateByQuery(c, &req) {
+	if !utils.BindAndValidateByQuery(c, &req) {
 		return
 	}
 	q := req.ToDto()
@@ -73,7 +74,7 @@ func (h *ProductHandler) List(c *gin.Context) {
 
 func (h *ProductHandler) Search(c *gin.Context) {
 	var req ProductReq
-	if !BindAndValidateByQuery(c, &req) {
+	if !utils.BindAndValidateByQuery(c, &req) {
 		return
 	}
 	q := req.ToDto()
@@ -94,7 +95,7 @@ func (h *ProductHandler) Search(c *gin.Context) {
 
 func (h *ProductHandler) Create(c *gin.Context) {
 	var req domain.Product
-	if !BindAndValidateByJSON(c, &req) {
+	if !utils.BindAndValidateByJSON(c, &req) {
 		return
 	}
 
@@ -127,27 +128,6 @@ func (h *ProductHandler) Get(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func (h *ProductHandler) GetWithCreator(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		response.ErrorWithErrno(c, errno.InvalidParams)
-		return
-	}
-	product, user, err := h.svc.GetProductWithCreator(c, id)
-	if errors.Is(err, errno.ErrDataNotFound) {
-		response.ErrorWithErrno(c, errno.ErrDataNotFound)
-		return
-	}
-	if err != nil {
-		response.Error(c, 40001, err.Error())
-		return
-	}
-	response.Success(c, gin.H{
-		"product": product,
-		"user":    user,
-	})
-}
-
 // 秒杀
 func (h *ProductHandler) DuctStockSeckill(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -156,10 +136,10 @@ func (h *ProductHandler) DuctStockSeckill(c *gin.Context) {
 		return
 	}
 	var productSecKillReq ProductSecKillReq
-	if !BindAndValidateByJSON(c, &productSecKillReq) {
+	if !utils.BindAndValidateByJSON(c, &productSecKillReq) {
 		return
 	}
-	userId := GetUserID(c)
+	userId := utils.GetUserID(c)
 	val, err := h.svc.DeductStockSeckill(c, id, productSecKillReq.Count, userId, productSecKillReq.IdemKey)
 	if err != nil {
 		if errors.Is(err, errno.ProductErrSeckillStockNotInit) {

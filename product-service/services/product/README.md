@@ -19,3 +19,10 @@
 
 * GET /v1/products/:id/stock（读）
 ## 依赖关系（一句话）
+
+---
+
+* D37.4 本阶段迁移product部分，当前阶段暂时依赖 `internal\errno`，`internal\middleware`
+* 其余部分在后续继续收拢
+* 移除order在 `internal`中的代码
+* 移除product在 `internal`中的代码

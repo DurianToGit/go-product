@@ -17,3 +17,6 @@ type Order struct {
 const OrderStatusCreated = "created"
 const OrderStatusPaid = "paid"
 const OrderStatusCanceled = "canceled"
+
+const ProductEventTypeStockDeducted = "stock_deducted"
+const ProductEventTypeRestockDeducted = "restock_deducted"

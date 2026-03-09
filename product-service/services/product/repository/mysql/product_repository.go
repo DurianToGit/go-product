@@ -7,10 +7,10 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"product-service/internal/domain"
-	"product-service/internal/dto"
 	"product-service/internal/errno"
 	"product-service/internal/repository/mysql/model"
+	"product-service/services/product/domain"
+	"product-service/services/product/dto"
 	"time"
 )
 
@@ -256,20 +256,6 @@ func isDuplicateKeyError(err error) bool {
 	return false
 }
 
-func (r *ProductRepository) GetWithCreator(ctx context.Context, id int64) (*domain.Product, *domain.User, error) {
-	var m model.ProductModel
-	err := r.db.WithContext(ctx).
-		Preload("Creator").
-		First(&m, id).Error
-	if err != nil {
-		return nil, nil, err
-	}
-
-	p := toDomain(&m)
-	u := toUserDomain(&m.Creator)
-	return p, u, nil
-}
-
 func toDomain(m *model.ProductModel) *domain.Product {
 	return &domain.Product{
 		ID:        m.ID,
@@ -278,14 +264,5 @@ func toDomain(m *model.ProductModel) *domain.Product {
 		Stock:     m.Stock,
 		CreatedAt: m.CreatedAt.Format("2006-01-02 15:04:05"),
 		UpdatedAt: m.UpdatedAt.Format("2006-01-02 15:04:05"),
-	}
-}
-
-func toUserDomain(c *model.UserModel) *domain.User {
-	return &domain.User{
-		ID:        c.ID,
-		Username:  c.Username,
-		CreatedAt: c.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt: c.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}
 }

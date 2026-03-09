@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"product-service/internal/errno"
 	"product-service/internal/response"
+	"product-service/pkg/utils"
 	"product-service/services/order/service"
 )
 
@@ -26,10 +27,10 @@ func NewOrderHandler(svc *service.OrderService) *OrderHandler {
 
 func (h *OrderHandler) Create(c *gin.Context) {
 	var order OrderCreatedReq
-	if !BindAndValidateByJSON(c, &order) {
+	if !utils.BindAndValidateByJSON(c, &order) {
 		return
 	}
-	userId := GetUserID(c)
+	userId := utils.GetUserID(c)
 
 	o, err := h.svc.Create(c, userId, order.ProductID, order.Count, order.IdemKey)
 	if err != nil {

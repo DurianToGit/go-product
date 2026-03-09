@@ -6,11 +6,11 @@ import (
 	"golang.org/x/sync/singleflight"
 	"log"
 	"math/rand"
-	"product-service/internal/domain"
-	"product-service/internal/dto"
 	"product-service/pkg/cachekey"
 	"product-service/pkg/redis"
 	"product-service/pkg/rediskeys"
+	"product-service/services/product/domain"
+	"product-service/services/product/dto"
 	"time"
 )
 

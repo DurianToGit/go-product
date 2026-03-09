@@ -11,3 +11,6 @@ type Product struct {
 
 const ProductEventTypeStockDeducted = "stock_deducted"
 const ProductEventTypeRestockDeducted = "restock_deducted"
+
+// 数据库不存在
+const DataCacheNil = "__nil__"

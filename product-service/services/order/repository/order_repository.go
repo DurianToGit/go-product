@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
-	"product-service/internal/domain"
-	"product-service/internal/repository/mysql/model"
+	"product-service/services/order/domain"
+	"product-service/services/order/repository/mysql/model"
 	"time"
 )
 

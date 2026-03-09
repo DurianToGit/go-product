@@ -10,7 +10,6 @@ import (
 	"product-service/api/handler"
 	"product-service/internal/config"
 	"product-service/internal/repository/mysql"
-	"product-service/internal/repository/mysql/model"
 	"product-service/internal/service"
 	"product-service/internal/validator"
 	"product-service/pkg/breaker"
@@ -20,13 +19,17 @@ import (
 	mysqlOrder "product-service/services/order/repository/mysql"
 	modelOrder "product-service/services/order/repository/mysql/model"
 	serviceOrder "product-service/services/order/service"
+	handlerProduct "product-service/services/product/handler"
+	mysqlProduct "product-service/services/product/repository/mysql"
+	modelProduct "product-service/services/product/repository/mysql/model"
+	serviceProduct "product-service/services/product/service"
 	"time"
 )
 
 type App struct {
 	Config         *config.Config
 	UserHandler    *handler.UserHandler
-	ProductHandler *handler.ProductHandler
+	ProductHandler *handlerProduct.ProductHandler
 	OrderHandler   *handlerOrder.OrderHandler
 
 	RedisClient  *redis2.Client
@@ -90,8 +93,8 @@ func InitApp() *App {
 
 	// 迁移
 	_ = mySQL.AutoMigrate(
-		&model.ProductModel{},
-		&model.ProductEventConsumedModel{},
+		&modelProduct.ProductModel{},
+		&modelProduct.ProductEventConsumedModel{},
 		&modelOrder.OrderModel{},
 	)
 
@@ -101,9 +104,9 @@ func InitApp() *App {
 	userHandler := handler.NewUserHandler(userService)
 
 	// 初始化商品服务
-	productRepo := mysql.NewProductRepository(mySQL)
-	productService := service.NewProductService(productRepo)
-	productHandler := handler.NewProductHandler(productService)
+	productRepo := mysqlProduct.NewProductRepository(mySQL)
+	productService := serviceProduct.NewProductService(productRepo)
+	productHandler := handlerProduct.NewProductHandler(productService)
 
 	// 初始化订单服务
 	orderRepo := mysqlOrder.NewOrderRepository(mySQL)

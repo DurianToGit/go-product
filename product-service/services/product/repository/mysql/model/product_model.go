@@ -2,16 +2,18 @@ package model
 
 import (
 	"gorm.io/gorm"
+	"time"
 )
 
 type ProductModel struct {
-	BaseModel
+	ID        int64     `gorm:"primaryKey;autoIncrement"`
+	CreatedAt time.Time `gorm:"not null;autoCreateTime"`
+	UpdatedAt time.Time `gorm:"not null;autoUpdateTime"`
 	Name      string    `gorm:"type:varchar(128);not null"`
 	Price     int64     `gorm:"not null;default:0"`
 	Stock     int64     `gorm:"not null;default:0"`
 	Version   int       `gorm:"not null;default:1"`
 	CreatorID int64     `gorm:"not null;index:idx_creator_id"`
-	Creator   UserModel `gorm:"foreignKey:CreatorID;references:ID"`
 	Status    int       `gorm:"not null;default:1;index:idx_status"`
 }
 

@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"product-service/internal/domain"
 	"sync"
 	"testing"
 	"time"
@@ -16,10 +15,11 @@ import (
 
 	"product-service/internal/config"
 	"product-service/internal/errno"
-	mysqlrepo "product-service/internal/repository/mysql"
-	"product-service/internal/repository/mysql/model"
-	"product-service/internal/service"
 	"product-service/pkg/db"
+	"product-service/services/order/domain"
+	mysqlrepo "product-service/services/order/repository/mysql"
+	"product-service/services/order/repository/mysql/model"
+	"product-service/services/order/service"
 )
 
 func newTestDB(t *testing.T) *gorm.DB {
@@ -61,9 +61,7 @@ func TestOrderService_Create_Idempotency_Concurrent(t *testing.T) {
 	gdb := newTestDB(t)
 
 	repo := mysqlrepo.NewOrderRepository(gdb)
-	productRepo := mysqlrepo.NewProductRepository(gdb)
-	productService := service.NewProductService(productRepo)
-	svc := service.NewOrderService(repo, productService) // 同上，按实际改
+	svc := service.NewOrderService(repo) // 同上，按实际改
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -119,9 +117,7 @@ func TestOrderService_Create_Idempotency_ParamMismatch(t *testing.T) {
 	gdb := newTestDB(t)
 
 	repo := mysqlrepo.NewOrderRepository(gdb)
-	productRepo := mysqlrepo.NewProductRepository(gdb)
-	productService := service.NewProductService(productRepo)
-	svc := service.NewOrderService(repo, productService)
+	svc := service.NewOrderService(repo)
 
 	ctx := context.Background()
 
@@ -143,9 +139,7 @@ func TestOrderService_Create_Idempotency_ParamMismatch(t *testing.T) {
 func TestOrderService_CancelExpired(t *testing.T) {
 	gdb := newTestDB(t)
 	repo := mysqlrepo.NewOrderRepository(gdb)
-	productRepo := mysqlrepo.NewProductRepository(gdb)
-	productService := service.NewProductService(productRepo)
-	svc := service.NewOrderService(repo, productService)
+	svc := service.NewOrderService(repo)
 
 	ctx := context.Background()
 	const (

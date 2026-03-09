@@ -5,15 +5,15 @@ import (
 	"go.opentelemetry.io/otel"
 	"log"
 	"product-service/internal/config"
-	"product-service/internal/domain"
-	"product-service/internal/dto"
 	"product-service/internal/errno"
-	"product-service/internal/repository"
 	"product-service/pkg/redis"
 	"product-service/pkg/rediskeys"
 	"product-service/pkg/redislock"
 	"product-service/pkg/seckill"
 	"product-service/pkg/stream"
+	"product-service/services/product/domain"
+	"product-service/services/product/dto"
+	"product-service/services/product/repository"
 	"time"
 )
 
@@ -49,10 +49,6 @@ func (s *ProductService) CreateProduct(ctx context.Context, p *domain.Product) e
 
 func (s *ProductService) GetProduct(ctx context.Context, id int64) (*domain.Product, error) {
 	return s.repo.Get(ctx, id)
-}
-
-func (s *ProductService) GetProductWithCreator(ctx context.Context, id int64) (*domain.Product, *domain.User, error) {
-	return s.repo.GetWithCreator(ctx, id)
 }
 
 func (s *ProductService) PrewarmProductStock(ctx context.Context, id int64) error {

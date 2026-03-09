@@ -1,7 +1,7 @@
 package model
 
 import (
-	"product-service/internal/domain"
+	"product-service/services/order/domain"
 	"time"
 )
 

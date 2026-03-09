@@ -5,9 +5,9 @@ import (
 	"errors"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"product-service/internal/domain"
 	"product-service/internal/errno"
 	"product-service/pkg/logger"
+	"product-service/services/order/domain"
 	"product-service/services/order/repository/mysql/model"
 	"time"
 )
