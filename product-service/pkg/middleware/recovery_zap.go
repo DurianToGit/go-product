@@ -5,7 +5,7 @@ import (
 	"go.uber.org/zap"
 	"product-service/pkg/logger"
 
-	"product-service/internal/response"
+	"product-service/pkg/response"
 )
 
 func RecoveryZap() gin.HandlerFunc {

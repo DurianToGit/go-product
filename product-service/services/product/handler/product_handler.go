@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"product-service/internal/errno"
-	"product-service/internal/response"
+	"product-service/pkg/response"
 	"product-service/pkg/utils"
 	"product-service/services/product/domain"
 	"product-service/services/product/dto"

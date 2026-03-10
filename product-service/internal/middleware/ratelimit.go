@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"log"
 	"product-service/internal/errno"
-	"product-service/internal/response"
 	"product-service/pkg/ratelimit"
+	"product-service/pkg/response"
 	"sync"
 	"time"
 )

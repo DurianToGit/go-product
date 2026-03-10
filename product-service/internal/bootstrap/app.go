@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/joho/godotenv"
 	redis2 "github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 	"log"
 	"math/rand"
 	"product-service/api/handler"
@@ -32,6 +33,7 @@ type App struct {
 	ProductHandler *handlerProduct.ProductHandler
 	OrderHandler   *handlerOrder.OrderHandler
 
+	MysqlClient  *gorm.DB
 	RedisClient  *redis2.Client
 	RedisBreaker *breaker.CircuitBreaker
 
@@ -118,6 +120,7 @@ func InitApp() *App {
 		UserHandler:    userHandler,
 		ProductHandler: productHandler,
 		OrderHandler:   orderHandler,
+		MysqlClient:    mySQL,
 		RedisClient:    rdb,
 		RedisBreaker:   redisBreaker,
 		EtcdLoader:     loader,

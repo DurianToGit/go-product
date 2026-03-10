@@ -31,7 +31,7 @@ func main() {
 
 	// 初始化订单服务
 	repo := mysql.NewOrderRepository(mySQL)
-	service := service.NewOrderService(repo)
+	orderService := service.NewOrderService(repo)
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -43,7 +43,7 @@ func main() {
 			log.Println("取消订单进程Worker 停止")
 			return
 		case <-ticker.C:
-			n, err := service.CancelExpired(ctx, time.Now(), time.Minute*15)
+			n, err := orderService.CancelExpired(ctx, time.Now(), time.Minute*15)
 			if err != nil {
 				log.Printf("取消过期订单失败: %v", err)
 			} else {

@@ -3,7 +3,7 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 	"log"
-	"product-service/internal/response"
+	"product-service/pkg/response"
 )
 
 func Recovery() gin.HandlerFunc {

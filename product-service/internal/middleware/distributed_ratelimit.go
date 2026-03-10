@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 	"product-service/internal/errno"
-	"product-service/internal/response"
 	"product-service/pkg/breaker"
+	"product-service/pkg/response"
 	"time"
 
 	"github.com/gin-gonic/gin"

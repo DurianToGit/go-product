@@ -5,6 +5,7 @@ import (
 	"product-service/api/handler"
 	"product-service/internal/bootstrap"
 	"product-service/internal/middleware"
+	"product-service/pkg/health"
 	"product-service/pkg/ratelimit"
 	"product-service/pkg/redis"
 	orderRouter "product-service/services/order/router"
@@ -28,6 +29,10 @@ func Register(r *gin.Engine, app *bootstrap.App) {
 			},
 		),
 	)
+	r.GET("health", health.Handler(&health.Checker{
+		DB:    app.MysqlClient,
+		Redis: app.RedisClient,
+	}))
 	api := r.Group("/api")
 	api.GET("ping", handler.Ping)
 

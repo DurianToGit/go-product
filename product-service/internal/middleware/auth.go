@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"product-service/internal/auth"
 	"product-service/internal/errno"
-	"product-service/internal/response"
+	"product-service/pkg/response"
 	"strings"
 )
 

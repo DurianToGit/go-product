@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
-	"product-service/internal/response"
+	"product-service/pkg/response"
 )
 
 func Ping(c *gin.Context) {

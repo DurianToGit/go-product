@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"product-service/internal/errno"
-	"product-service/internal/response"
+	"product-service/pkg/response"
 	"product-service/pkg/utils"
 	"product-service/services/order/service"
 )

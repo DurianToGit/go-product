@@ -3,7 +3,7 @@ package utils
 import (
 	"github.com/gin-gonic/gin"
 	"product-service/internal/errno"
-	"product-service/internal/response"
+	"product-service/pkg/response"
 )
 
 func BindAndValidateByJSON(c *gin.Context, req interface{}) bool {

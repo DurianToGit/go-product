@@ -8,9 +8,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"product-service/internal/errno"
-	"product-service/internal/repository/mysql/model"
 	"product-service/services/product/domain"
 	"product-service/services/product/dto"
+	"product-service/services/product/repository/mysql/model"
 	"time"
 )
 
