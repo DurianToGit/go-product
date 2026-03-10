@@ -4,7 +4,6 @@ import (
 	"context"
 	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
-	"log"
 	"product-service/internal/config"
 	"product-service/internal/errno"
 	"product-service/pkg/logger"
@@ -97,7 +96,7 @@ func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout
 	deadline := now.Add(-timeout)
 	num, data, err := s.Repo.CancelExpired(ctx, deadline)
 	if err != nil {
-		log.Printf("取消订单失败:%v", err)
+		logger.L().Error("取消订单失败", zap.Error(err))
 		return 0, err
 	}
 	if num == 0 {

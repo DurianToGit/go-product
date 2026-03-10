@@ -2,7 +2,9 @@ package config
 
 import (
 	"os"
+	"product-service/pkg/logger"
 	"strconv"
+	"sync/atomic"
 )
 
 type Config struct {
@@ -13,8 +15,11 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Env  string
-	Addr string
+	Env             string
+	Addr            string
+	LogLevel        string
+	LogEncoding     string
+	ProductCacheTTL int
 }
 
 type DBConfig struct {
@@ -35,18 +40,50 @@ type EtcdConfig struct {
 	Endpoints []string
 }
 
+var globalConfig atomic.Value
+
+// Load 初始化配置
 func Load() *Config {
+	cfg := loadFromEnv()
+	globalConfig.Store(cfg)
+	return cfg
+}
+
+// Reload 重新加载配置
+func Reload() {
+	cfg := loadFromEnv()
+	globalConfig.Store(cfg)
+}
+
+// Get 获取当前配置
+func Get() *Config {
+	v := globalConfig.Load()
+	if v == nil {
+		return nil
+	}
+	return v.(*Config)
+}
+
+func loadFromEnv() *Config {
 
 	redisDB := os.Getenv("REDIS_DB")
 	if redisDB == "" {
 		redisDB = "0"
 	}
-	// DB转为int类型
+
 	redisDBInt, _ := strconv.Atoi(redisDB)
+	productCacheTtl, err := strconv.Atoi(os.Getenv("PRODUCT_CACHE_TTL"))
+	if err != nil {
+		productCacheTtl = 60
+		logger.L().Warn("PRODUCT_CACHE_TTL not set, use default value 60")
+	}
 	return &Config{
 		App: AppConfig{
-			Env:  os.Getenv("ENV"),
-			Addr: os.Getenv("ADDR"),
+			Env:             os.Getenv("ENV"),
+			Addr:            os.Getenv("ADDR"),
+			LogLevel:        os.Getenv("LOG_LEVEL"),
+			LogEncoding:     os.Getenv("LOG_ENCODING"),
+			ProductCacheTTL: productCacheTtl,
 		},
 		DB: DBConfig{
 			DBUser: os.Getenv("DB_USER"),

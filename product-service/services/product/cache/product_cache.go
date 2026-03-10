@@ -1,7 +1,7 @@
 package cache
 
 import (
-	"product-service/internal/domain"
+	"product-service/services/product/domain"
 	"sync"
 )
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
-	"log"
 	"product-service/internal/config"
 	"product-service/internal/errno"
 	"product-service/pkg/logger"
@@ -36,18 +35,15 @@ func (s *OrderService) DeductStockSeckill(ctx context.Context, productId int64, 
 		onceKey := stream.SideFxKeyDeduct(userId, idemKey)
 		ctx2, span2 := otel.Tracer("stream").Start(ctx2, "stream.publish")
 		defer span2.End()
-		err2 := s.productEventProducer.PublishOnce(ctx2, onceKey, map[string]any{
+		data := map[string]any{
 			"product_id": productId,
 			"user_id":    userId,
 			"count":      count,
 			"event_type": domain.ProductEventTypeStockDeducted,
 			"source":     "seckill",
-		}, time.Duration(cfg.OrderCancelTimeoutSec)*time.Second)
-		log.Printf("publish product event, product_id=%d,count=%d,user_id=%d", productId, count, userId)
-		logger.L().Info("publish product event",
-			zap.Int64("product_id", productId),
-			zap.Int64("count", count),
-			zap.Int64("user_id", userId))
+		}
+		err2 := s.productEventProducer.PublishOnce(ctx2, onceKey, data, time.Duration(cfg.OrderCancelTimeoutSec)*time.Second)
+		logger.L().Info("publish product event", zap.Any("data", data))
 		if err2 != nil {
 			logger.L().Error("publish product event failed", zap.Error(err), zap.Int64("product_id", productId))
 			return 0, errno.ErrDependencyUnavailable

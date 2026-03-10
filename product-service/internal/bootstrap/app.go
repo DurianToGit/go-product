@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/joho/godotenv"
 	redis2 "github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"log"
 	"math/rand"
@@ -14,7 +15,9 @@ import (
 	"product-service/internal/service"
 	"product-service/internal/validator"
 	"product-service/pkg/breaker"
+	"product-service/pkg/configwatch"
 	"product-service/pkg/db"
+	"product-service/pkg/logger"
 	"product-service/pkg/redis"
 	handlerOrder "product-service/services/order/handler"
 	mysqlOrder "product-service/services/order/repository/mysql"
@@ -55,16 +58,21 @@ func BaseInit() *config.Config {
 
 func InitApp() *App {
 	cfg := BaseInit()
+	err := configwatch.Watch(".env", func() {
+		config.Reload()
+	})
+	if err != nil {
+		logger.L().Error("加载环境变量失败", zap.Error(err))
+		return nil
+	}
 	// etcd 加载器
 	loader, err := config.NewEtcdLoader(cfg.Etcd.Endpoints)
-	log.Println("初始化etcd 加载器")
+	logger.L().Info("初始化etcd 加载器")
 	if err != nil {
-		log.Println("初始化失败")
-		log.Printf("init etcd failed: %v", err)
+		logger.L().Error("初始化失败", zap.Error(err))
 		config.SetRuntimeConfig(config.DefaultRuntimeConfig())
 	} else {
-		log.Println("初始化成功")
-		log.Println(loader)
+		logger.L().Info("初始化etcd 加载器成功")
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		// 启动时加载
@@ -72,9 +80,8 @@ func InitApp() *App {
 			log.Printf("load config failed: %v", err)
 			config.SetRuntimeConfig(config.DefaultRuntimeConfig())
 		} else {
-			log.Println("load config success")
+			logger.L().Info("load config success", zap.Any("config", config.GetRuntimeConfig()))
 		}
-		log.Println(1233333)
 		ctx2, _ := context.WithCancel(context.Background())
 
 		// 后台 etcd watch

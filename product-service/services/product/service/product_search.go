@@ -3,10 +3,11 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
-	"log"
 	"math/rand"
 	"product-service/pkg/cachekey"
+	"product-service/pkg/logger"
 	"product-service/pkg/redis"
 	"product-service/pkg/rediskeys"
 	"product-service/services/product/domain"
@@ -39,7 +40,7 @@ func (s *ProductService) ProductSearch(ctx context.Context, req *dto.ProductQuer
 
 		derr := redis.Delete(ctx, key)
 		if derr != nil {
-			log.Printf("删除缓存失败:%v", derr)
+			logger.L().Error("删除缓存失败", zap.Error(derr))
 		}
 	}
 	// singleflight 合并回源
@@ -55,7 +56,7 @@ func (s *ProductService) ProductSearch(ctx context.Context, req *dto.ProductQuer
 			// 反序列化失败：删除坏缓存，回源
 			derr := redis.Delete(ctx, key)
 			if derr != nil {
-				log.Printf("删除缓存失败:%v", derr)
+				logger.L().Error("删除缓存失败", zap.Error(derr))
 			}
 		}
 		list, total, err := s.repo.List(ctx, req)
