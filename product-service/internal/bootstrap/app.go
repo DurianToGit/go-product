@@ -59,7 +59,12 @@ func BaseInit() *config.Config {
 func InitApp() *App {
 	cfg := BaseInit()
 	err := configwatch.Watch(".env", func() {
+		if err := godotenv.Overload(".env"); err != nil {
+			logger.L().Error("reload .env failed", zap.Error(err))
+			return
+		}
 		config.Reload()
+		logger.L().Info("config reloaded", zap.Any("config", config.Get()))
 	})
 	if err != nil {
 		logger.L().Error("加载环境变量失败", zap.Error(err))
