@@ -3,9 +3,10 @@ package handler
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
-	"log"
+	"go.uber.org/zap"
 	"product-service/internal/errno"
 	"product-service/pkg/auth"
+	"product-service/pkg/logger"
 	"product-service/pkg/redis"
 	"product-service/pkg/rediskeys"
 	"product-service/pkg/response"
@@ -91,13 +92,13 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return redis.Client.SAdd(c, key, user.ID).Err()
 	})
 	if errD != nil {
-		log.Printf("redis error: %v", errD)
+		logger.L().Error("redis error", zap.Error(errD))
 	}
 	errE := redis.Do(c, func() error {
 		return redis.Client.Expire(c, key, 48*time.Hour).Err()
 	})
 	if errE != nil {
-		log.Printf("redis error: %v", errE)
+		logger.L().Error("redis error", zap.Error(errE))
 	}
 	response.Success(c, gin.H{
 		"token": token,
