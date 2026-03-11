@@ -2,7 +2,6 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
-	"product-service/api/handler"
 	"product-service/internal/bootstrap"
 	"product-service/internal/middleware"
 	"product-service/pkg/health"
@@ -10,6 +9,7 @@ import (
 	"product-service/pkg/redis"
 	orderRouter "product-service/services/order/router"
 	productRouter "product-service/services/product/router"
+	userRouter "product-service/services/user/router"
 	"time"
 )
 
@@ -33,11 +33,20 @@ func Register(r *gin.Engine, app *bootstrap.App) {
 		DB:    app.MysqlClient,
 		Redis: app.RedisClient,
 	}))
-	api := r.Group("/api")
-	api.GET("ping", handler.Ping)
+	api := r.Group("/api/v1")
 
-	InitUserRouter(api, app.UserHandler)
+	// 公共路由
+	authGroup := api.Group("/auth")
+	{
+		userRouter.InitAuthRouter(authGroup, app.UserHandler)
+	}
 
-	orderRouter.InitOrderRouter(api, app.OrderHandler)
-	productRouter.InitProductRouter(api, app.ProductHandler)
+	// 需要登录的业务路由
+	biz := api.Group("")
+	biz.Use(middleware.Auth())
+	{
+		productRouter.InitProductRouter(biz, app.ProductHandler)
+		orderRouter.InitOrderRouter(biz, app.OrderHandler)
+		userRouter.InitUserRouter(biz, app.UserHandler)
+	}
 }

@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"github.com/gin-gonic/gin"
-	"product-service/internal/auth"
 	"product-service/internal/errno"
+	"product-service/pkg/auth"
 	"product-service/pkg/response"
 	"strings"
 )

@@ -6,6 +6,7 @@ import (
 	"product-service/internal/errno"
 	"product-service/pkg/response"
 	"product-service/pkg/utils"
+	"product-service/services/product/cache"
 	"product-service/services/product/domain"
 	"product-service/services/product/dto"
 	"product-service/services/product/service"
@@ -42,11 +43,12 @@ func (p *ProductReq) ToDto() *dto.ProductQuery {
 }
 
 type ProductHandler struct {
-	svc *service.ProductService
+	svc   *service.ProductService
+	cache *cache.ProductCache
 }
 
 func NewProductHandler(svc *service.ProductService) *ProductHandler {
-	return &ProductHandler{svc}
+	return &ProductHandler{svc, cache.NewProductCache()}
 }
 
 func (h *ProductHandler) List(c *gin.Context) {
@@ -113,18 +115,21 @@ func (h *ProductHandler) Get(c *gin.Context) {
 		response.ErrorWithErrno(c, errno.InvalidParams)
 		return
 	}
-	data, err := h.svc.GetProduct(c, id)
+	data, ok := h.cache.Get(id)
+	if !ok {
+		data, err = h.svc.GetProduct(c, id)
 
-	if errors.Is(err, errno.ErrDataNotFound) {
-		response.ErrorWithErrno(c, errno.ErrDataNotFound)
-		return
+		if errors.Is(err, errno.ErrDataNotFound) {
+			response.ErrorWithErrno(c, errno.ErrDataNotFound)
+			return
+		}
+
+		if err != nil {
+			response.Error(c, 40001, err.Error())
+			return
+		}
+		h.cache.Set(data)
 	}
-
-	if err != nil {
-		response.Error(c, 40001, err.Error())
-		return
-	}
-
 	response.Success(c, data)
 }
 

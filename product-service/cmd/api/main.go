@@ -48,15 +48,15 @@ func main() {
 	// 创建Gin引擎实例
 	r := gin.New()
 	// 注册中间件：日志、耗时统计、异常恢复
-	//r.Use(
-	//	middleware.Logger(),   // 日志中间件：记录请求日志
-	//	middleware.Cost(),     // 耗时中间件：统计请求处理时间
-	//	middleware.Recovery(), // 恢复中间件：捕获panic并恢复
-	//)
+	// r.Use(
+	// 	middleware.Logger(),   // 日志中间件：记录请求日志
+	// 	middleware.Recovery(), // 恢复中间件：捕获panic并恢复
+	// )
 	r.Use(
 		middleware.RequestID(),
 		middleware.AccessLog(),
 		middleware.RecoveryZap(),
+		middleware.Cost(), // 耗时中间件：统计请求处理时间
 	)
 
 	// 注册路由：将所有API路由注册到引擎

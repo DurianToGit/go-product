@@ -4,12 +4,13 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"log"
-	"product-service/internal/auth"
 	"product-service/internal/errno"
-	"product-service/internal/service"
+	"product-service/pkg/auth"
 	"product-service/pkg/redis"
 	"product-service/pkg/rediskeys"
 	"product-service/pkg/response"
+	"product-service/pkg/utils"
+	"product-service/services/user/service"
 	"strconv"
 	"time"
 )
@@ -26,7 +27,7 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 
 func (h *UserHandler) List(c *gin.Context) {
 	var req UserListReq
-	if !BindAndValidateByQuery(c, &req) {
+	if !utils.BindAndValidateByQuery(c, &req) {
 		return
 	}
 	data, total, err := h.svc.List(c, req.ToDto())
@@ -47,7 +48,7 @@ func (h *UserHandler) List(c *gin.Context) {
 
 func (h *UserHandler) Register(c *gin.Context) {
 	var req registerReq
-	if !BindAndValidateByJSON(c, &req) {
+	if !utils.BindAndValidateByJSON(c, &req) {
 		return
 	}
 	user, err := h.svc.Register(c, req.Username, req.Password)
@@ -64,7 +65,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 
 func (h *UserHandler) Login(c *gin.Context) {
 	var req registerReq
-	if !BindAndValidateByJSON(c, &req) {
+	if !utils.BindAndValidateByJSON(c, &req) {
 		return
 	}
 	user, err := h.svc.Login(c, req.Username, req.Password)
@@ -104,7 +105,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 }
 
 func (h *UserHandler) Profile(c *gin.Context) {
-	userId := GetUserID(c)
+	userId := utils.GetUserID(c)
 	user, err := h.svc.GetByUserId(c, userId)
 	if err != nil {
 		if errors.Is(err, errno.UserErrNotFound) {
@@ -147,7 +148,7 @@ func (h *UserHandler) UserInfo(c *gin.Context) {
 
 func (h *UserHandler) Update(c *gin.Context) {
 	var req updateUserReq
-	if !BindAndValidateByJSON(c, &req) {
+	if !utils.BindAndValidateByJSON(c, &req) {
 		return
 	}
 	userId, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -168,7 +169,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 
 func (h *UserHandler) UpdatePassword(c *gin.Context) {
 	var req updatePasswordReq
-	if !BindAndValidateByJSON(c, &req) {
+	if !utils.BindAndValidateByJSON(c, &req) {
 		return
 	}
 	if err := h.svc.UpdatePassword(c, req.Username, req.OldPassword, req.NewPassword); err != nil {

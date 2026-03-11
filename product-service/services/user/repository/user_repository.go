@@ -2,9 +2,9 @@ package repository
 
 import (
 	"context"
-	"product-service/internal/domain"
-	"product-service/internal/dto"
-	"product-service/internal/repository/mysql/model"
+	"product-service/services/user/domain"
+	"product-service/services/user/dto"
+	"product-service/services/user/repository/mysql/model"
 )
 
 type UserRepository interface {

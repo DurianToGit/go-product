@@ -6,14 +6,14 @@ import (
 	"errors"
 	"golang.org/x/sync/singleflight"
 	"math/rand"
-	"product-service/internal/domain"
-	"product-service/internal/dto"
 	"product-service/internal/errno"
-	"product-service/internal/repository"
-	"product-service/internal/repository/mysql/model"
 	"product-service/pkg/cache"
 	"product-service/pkg/redis"
 	"product-service/pkg/rediskeys"
+	"product-service/services/user/domain"
+	"product-service/services/user/dto"
+	"product-service/services/user/repository"
+	"product-service/services/user/repository/mysql/model"
 	"time"
 )
 

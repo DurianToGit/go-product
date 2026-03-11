@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"product-service/internal/dto"
 	"product-service/internal/errno"
-	"product-service/internal/repository/mysql/model"
+	"product-service/services/user/dto"
+	"product-service/services/user/repository/mysql/model"
 )
 
 func TestUserRepository_List_Pagination_Order(t *testing.T) {

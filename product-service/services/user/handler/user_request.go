@@ -1,6 +1,6 @@
 package handler
 
-import "product-service/internal/dto"
+import "product-service/services/user/dto"
 
 type registerReq struct {
 	Username string `json:"username" binding:"required"`

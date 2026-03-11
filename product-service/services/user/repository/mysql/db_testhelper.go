@@ -7,8 +7,8 @@ import (
 	"gorm.io/gorm"
 	"os"
 	"product-service/internal/config"
-	"product-service/internal/repository/mysql/model"
 	"product-service/pkg/db"
+	"product-service/services/user/repository/mysql/model"
 	"testing"
 )
 

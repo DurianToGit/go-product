@@ -9,10 +9,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"math/rand"
-	"product-service/api/handler"
 	"product-service/internal/config"
-	"product-service/internal/repository/mysql"
-	"product-service/internal/service"
 	"product-service/internal/validator"
 	"product-service/pkg/breaker"
 	"product-service/pkg/configwatch"
@@ -27,12 +24,16 @@ import (
 	mysqlProduct "product-service/services/product/repository/mysql"
 	modelProduct "product-service/services/product/repository/mysql/model"
 	serviceProduct "product-service/services/product/service"
+	handlerUser "product-service/services/user/handler"
+	mysqlUser "product-service/services/user/repository/mysql"
+	modelUser "product-service/services/user/repository/mysql/model"
+	serviceUser "product-service/services/user/service"
 	"time"
 )
 
 type App struct {
 	Config         *config.Config
-	UserHandler    *handler.UserHandler
+	UserHandler    *handlerUser.UserHandler
 	ProductHandler *handlerProduct.ProductHandler
 	OrderHandler   *handlerOrder.OrderHandler
 
@@ -110,12 +111,13 @@ func InitApp() *App {
 		&modelProduct.ProductModel{},
 		&modelProduct.ProductEventConsumedModel{},
 		&modelOrder.OrderModel{},
+		&modelUser.UserModel{},
 	)
 
 	// 初始化用户服务
-	userRepo := mysql.NewUserRepository(mySQL)
-	userService := service.NewUserService(userRepo)
-	userHandler := handler.NewUserHandler(userService)
+	userRepo := mysqlUser.NewUserRepository(mySQL)
+	userService := serviceUser.NewUserService(userRepo)
+	userHandler := handlerUser.NewUserHandler(userService)
 
 	// 初始化商品服务
 	productRepo := mysqlProduct.NewProductRepository(mySQL)
