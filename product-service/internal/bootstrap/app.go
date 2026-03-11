@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"math/rand"
+	"product-service/internal/client/productclient"
 	"product-service/internal/config"
 	"product-service/internal/validator"
 	"product-service/pkg/breaker"
@@ -118,15 +119,17 @@ func InitApp() *App {
 	userRepo := mysqlUser.NewUserRepository(mySQL)
 	userService := serviceUser.NewUserService(userRepo)
 	userHandler := handlerUser.NewUserHandler(userService)
+	// userClient := userclient.NewLocalClient(userService) // 暂未使用
 
 	// 初始化商品服务
 	productRepo := mysqlProduct.NewProductRepository(mySQL)
 	productService := serviceProduct.NewProductService(productRepo)
 	productHandler := handlerProduct.NewProductHandler(productService)
+	productClient := productclient.NewLocalClient(productService)
 
 	// 初始化订单服务
 	orderRepo := mysqlOrder.NewOrderRepository(mySQL)
-	orderService := serviceOrder.NewOrderService(orderRepo)
+	orderService := serviceOrder.NewOrderService(orderRepo, productClient)
 	orderHandler := handlerOrder.NewOrderHandler(orderService)
 
 	return &App{

@@ -52,6 +52,14 @@ func (s *ProductService) GetProduct(ctx context.Context, id int64) (*domain.Prod
 	return s.repo.Get(ctx, id)
 }
 
+func (s *ProductService) GetStock(ctx context.Context, id int64) (int64, error) {
+	product, err := s.repo.Get(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	return product.Stock, nil
+}
+
 func (s *ProductService) PrewarmProductStock(ctx context.Context, id int64) error {
 	data, err := s.repo.Get(ctx, id)
 	if err != nil {

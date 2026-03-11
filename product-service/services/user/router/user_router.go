@@ -14,7 +14,6 @@ func InitAuthRouter(r *gin.RouterGroup, h *handler.UserHandler) {
 
 func InitUserRouter(r *gin.RouterGroup, h *handler.UserHandler) {
 	group := r.Group("users")
-	group.Use()
 	{
 		group.GET("profile", h.Profile)
 		group.PUT("update_password", h.UpdatePassword)

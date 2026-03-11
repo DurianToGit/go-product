@@ -4,6 +4,7 @@ import (
 	"context"
 	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
+	"product-service/internal/client/productclient"
 	"product-service/internal/config"
 	"product-service/internal/errno"
 	"product-service/pkg/logger"
@@ -20,13 +21,15 @@ type OrderService struct {
 	Repo                 repository.OrderRepository
 	Gen                  *utils.DistributedOrderGenerator
 	productEventProducer *stream.ProductEventProducer
+	productClient        productclient.Client
 }
 
-func NewOrderService(repo repository.OrderRepository) *OrderService {
+func NewOrderService(repo repository.OrderRepository, productClient productclient.Client) *OrderService {
 	return &OrderService{
 		Repo:                 repo,
 		Gen:                  utils.NewDistributedOrderGenerator("order_"),
 		productEventProducer: stream.NewProductEventProducer(redis.Client),
+		productClient:        productClient,
 	}
 }
 
@@ -50,6 +53,14 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "not found") {
 		logger.L().Error("查找订单失败", zap.Error(err))
 		return nil, err
+	}
+	product, err := s.productClient.GetProduct(ctx, productID)
+	if err != nil {
+		logger.L().Error("获取商品信息失败", zap.Error(err))
+		return nil, err
+	}
+	if product.Stock < int64(count) {
+		return nil, errno.OrderErrNotEnoughStock
 	}
 
 	// 创建新订单
