@@ -45,7 +45,7 @@ func (s *OrderService) DeductStockSeckill(ctx context.Context, productId int64, 
 		err2 := s.productEventProducer.PublishOnce(ctx2, onceKey, data, time.Duration(cfg.OrderCancelTimeoutSec)*time.Second)
 		logger.L().Info("publish product event", zap.Any("data", data))
 		if err2 != nil {
-			logger.L().Error("publish product event failed", zap.Error(err), zap.Int64("product_id", productId))
+			logger.L().Error("publish product event failed", zap.Error(err2), zap.Int64("product_id", productId))
 			return 0, errno.ErrDependencyUnavailable
 		}
 		return remain, nil
