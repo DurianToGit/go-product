@@ -96,7 +96,7 @@ func (c *ProductEventConsumer) Consume(ctx context.Context, handler Handler) {
 						zap.String("stream", c.stream),
 						zap.String("group", c.group),
 						zap.String("msg_id", msg.ID),
-						zap.Error(err),
+						zap.Error(aerr),
 					)
 				}
 			}
