@@ -2,7 +2,8 @@ package stream
 
 import (
 	"context"
-	"log"
+	"go.uber.org/zap"
+	"product-service/pkg/logger"
 	"product-service/pkg/rediskeys"
 	"strings"
 	"time"
@@ -47,6 +48,10 @@ func (c *ProductEventConsumer) Consume(ctx context.Context, handler Handler) {
 		default:
 		}
 
+		// 1. 先处理 pending 太久的消息
+		c.consumePending(ctx, handler)
+
+		// 2. 再消费新消息
 		streams, err := c.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
 			Group:    c.group,
 			Consumer: c.consumer,
@@ -59,17 +64,27 @@ func (c *ProductEventConsumer) Consume(ctx context.Context, handler Handler) {
 			if err == redis.Nil {
 				continue
 			}
-			log.Println("xreadgroup error:", err)
+			logger.L().Error("xreadgroup error",
+				zap.String("stream", c.stream),
+				zap.String("group", c.group),
+				zap.String("consumer", c.consumer),
+				zap.Error(err),
+			)
 			continue
 		}
 
 		for _, s := range streams {
 			for _, msg := range s.Messages {
-				// TODO: 处理业务
-				log.Printf("consume msg id=%s values=%v", msg.ID, msg.Values)
+				logger.L().Info("consume msg",
+					zap.String("stream", s.Stream),
+					zap.String("msg_id", msg.ID),
+				)
 				herr := handler(ctx, msg)
 				if herr != nil {
-					log.Printf("handle msg failed: id=%s err=%v", msg.ID, herr)
+					logger.L().Error("handle msg failed",
+						zap.String("msg_id", msg.ID),
+						zap.Error(herr),
+					)
 					// 不 ACK，留 pending
 					continue
 				}
@@ -77,9 +92,65 @@ func (c *ProductEventConsumer) Consume(ctx context.Context, handler Handler) {
 				// ACK
 				aerr := c.rdb.XAck(ctx, c.stream, c.group, msg.ID).Err()
 				if aerr != nil {
-					log.Printf("xack failed: stream=%s group=%s id=%s err=%v", c.stream, c.group, msg.ID, aerr)
+					logger.L().Error("xack failed",
+						zap.String("stream", c.stream),
+						zap.String("group", c.group),
+						zap.String("msg_id", msg.ID),
+						zap.Error(err),
+					)
 				}
 			}
+		}
+	}
+}
+
+func (c *ProductEventConsumer) consumePending(ctx context.Context, handler Handler) {
+	msgs, _, err := c.rdb.XAutoClaim(ctx, &redis.XAutoClaimArgs{
+		Stream:   c.stream,
+		Group:    c.group,
+		Consumer: c.consumer,
+		MinIdle:  30 * time.Second,
+		Start:    "0-0",
+		Count:    10,
+	}).Result()
+
+	if err != nil {
+		if err != redis.Nil {
+			logger.L().Error("xautoclaim failed",
+				zap.String("stream", c.stream),
+				zap.String("group", c.group),
+				zap.String("consumer", c.consumer),
+				zap.Error(err),
+			)
+		}
+		return
+	}
+
+	for _, msg := range msgs {
+		logger.L().Info("consume pending msg",
+			zap.String("stream", c.stream),
+			zap.String("group", c.group),
+			zap.String("consumer", c.consumer),
+			zap.String("msg_id", msg.ID),
+		)
+
+		herr := handler(ctx, msg)
+		if herr != nil {
+			logger.L().Error("handle pending msg failed",
+				zap.String("msg_id", msg.ID),
+				zap.Error(herr),
+			)
+			// 不 ACK，留待后续继续重试
+			continue
+		}
+
+		if err := c.rdb.XAck(ctx, c.stream, c.group, msg.ID).Err(); err != nil {
+			logger.L().Error("xack pending msg failed",
+				zap.String("stream", c.stream),
+				zap.String("group", c.group),
+				zap.String("msg_id", msg.ID),
+				zap.Error(err),
+			)
 		}
 	}
 }

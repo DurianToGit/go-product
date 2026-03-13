@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
-	"log"
+	"go.uber.org/zap"
 	"product-service/internal/errno"
+	"product-service/pkg/logger"
 	"product-service/pkg/rediskeys"
 	"time"
 
@@ -50,7 +51,7 @@ func (p *ProductEventProducer) PublishOnce(ctx context.Context, onceKey string, 
 		ok, err := p.rdb.SetNX(ctx, onceKey, 1, ttl).Result()
 		if !ok {
 			// 已发布过（或并发下别人拿到了锁），直接视为成功
-			log.Printf("publish skipped due to onceKey exists: %s", onceKey)
+			logger.L().Info("publish skipped due to onceKey exists", zap.String("onceKey", onceKey))
 			return nil
 		}
 		return err

@@ -8,7 +8,7 @@ import (
 	"product-service/internal/config"
 	"product-service/internal/errno"
 	"product-service/pkg/logger"
-	"product-service/pkg/redis"
+	redisPkg "product-service/pkg/redis"
 	"product-service/pkg/stream"
 	"product-service/pkg/utils"
 	"product-service/services/order/domain"
@@ -28,7 +28,7 @@ func NewOrderService(repo repository.OrderRepository, productClient productclien
 	return &OrderService{
 		Repo:                 repo,
 		Gen:                  utils.NewDistributedOrderGenerator("order_"),
-		productEventProducer: stream.NewProductEventProducer(redis.Client),
+		productEventProducer: stream.NewProductEventProducer(redisPkg.Client),
 		productClient:        productClient,
 	}
 }

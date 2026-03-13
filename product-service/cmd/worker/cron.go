@@ -6,11 +6,14 @@ import (
 	"log"
 	"os/signal"
 	"product-service/internal/bootstrap"
+	"product-service/internal/client/productclient"
 	"product-service/pkg/db"
 	"product-service/pkg/logger"
 	"product-service/pkg/redis"
 	"product-service/services/order/repository/mysql"
 	"product-service/services/order/service"
+	mysqlProduct "product-service/services/product/repository/mysql"
+	serviceProduct "product-service/services/product/service"
 	"syscall"
 	"time"
 )
@@ -29,9 +32,14 @@ func main() {
 	mySQL := db.InitMySQL(dsn)
 	redis.InitRedis(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
 
+	// 初始化商品服务
+	productRepo := mysqlProduct.NewProductRepository(mySQL)
+	productService := serviceProduct.NewProductService(productRepo)
+	productClient := productclient.NewLocalClient(productService)
+
 	// 初始化订单服务
 	repo := mysql.NewOrderRepository(mySQL)
-	orderService := service.NewOrderService(repo)
+	orderService := service.NewOrderService(repo, productClient)
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
