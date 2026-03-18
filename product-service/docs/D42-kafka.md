@@ -67,6 +67,7 @@
     "created_at": 1700000000
   }
   ```
+  * 是否要求顺序：同一 order_id 的事件需要顺序
 * order.cancelled
   * 生产者：order.service
   * 消费者: `stock-worker`
@@ -80,6 +81,7 @@
     "reason": "timeout"
   }
   ```
+  * 是否要求顺序：同一 order_id 需要顺序，避免先取消后支付这类状态错乱
 * order.paid
   * 生产者：order.service
   * 消费者: `inventory-worker` `notify-worker`
@@ -92,6 +94,7 @@
     "paid_at": 1700000000
   }
   ```
+  * 是否要求顺序：同一 order_id 需要顺序
 * stock.deduct.requested
   * 生产者：`order-service`
   * 消费者: `product-worker`
@@ -104,6 +107,7 @@
     "count": 2
   }
   ```
+  * 是否要求顺序：同一 product_id 的库存操作尽量保持顺序
 * stock.restore.requested
   * 生产者：`order-service`
   * 消费者: `product-worker`
@@ -116,6 +120,7 @@
     "count": 2
   }
   ```
+  * 是否要求顺序：同一 product_id 的库存恢复和扣减操作尽量保持顺序
 
 任务 3：设计一层 MQ 抽象接口
 ```go

@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/segmentio/kafka-go"
+	"go.uber.org/zap"
 	"log"
+	"product-service/pkg/eventbus"
+	"product-service/pkg/logger"
 	"time"
 )
 
@@ -16,12 +18,15 @@ type StockDeductRequested struct {
 }
 
 func main() {
-	writer := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{"localhost:9092"},
-		Topic:   "stock.deduct.requested",
-	})
+	bus := eventbus.NewKafkaBus([]string{"localhost:9092"})
+	ctx := context.Background()
 
-	defer writer.Close()
+	defer func(bus *eventbus.KafkaBus) {
+		err := bus.Close()
+		if err != nil {
+			logger.L().Error("关闭kafka失败", zap.Error(err))
+		}
+	}(bus)
 
 	for i := 0; i < 10; i++ {
 		d := StockDeductRequested{
@@ -34,17 +39,12 @@ func main() {
 		if err != nil {
 			log.Fatalf("json error: %v", err)
 		}
-		msg := kafka.Message{
-			Key:   []byte(fmt.Sprintf("product-%d", i%2)), // 故意让 key 重复
-			Value: bytes,
-		}
-
-		err = writer.WriteMessages(context.Background(), msg)
+		key := fmt.Sprintf("product-%d", i%2)
+		err = bus.Publish(ctx, "stock.deduct.requested", key, bytes)
 		if err != nil {
 			log.Fatalf("write error: %v", err)
 		}
-
-		fmt.Println("sent:", string(msg.Key), string(msg.Value))
+		logger.L().Info("发送消息成功", zap.String("key", key), zap.String("value", string(bytes)))
 		time.Sleep(time.Second)
 	}
 }

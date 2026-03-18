@@ -10,7 +10,7 @@ import (
 
 type StockDeductRequested struct {
 	ProductID int64 `json:"product_id"`
-	UserId    int64 `json:"user_id"`
+	UserID    int64 `json:"user_id"`
 	Count     int64 `json:"count"`
 }
 
@@ -31,7 +31,7 @@ func main() {
 		}
 		var d StockDeductRequested
 		err2 := json.Unmarshal(msg.Value, &d)
-		if err != nil {
+		if err2 != nil {
 			log.Fatalf("json error: %v", err2)
 		}
 
