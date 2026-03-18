@@ -54,22 +54,68 @@
 任务 2：设计 go-product 的 Kafka Topic 草案
 
 * order.created
+  * 生产者: order.service
+  * 消费者: `stock-worker` `notify-worker`
+  * key: `order_id`
+  * payload:
+  ```json
+  {
+    "order_id": "1001",
+    "user_id": 88,
+    "product_id": 10,
+    "count": 2,
+    "created_at": 1700000000
+  }
+  ```
 * order.cancelled
+  * 生产者：order.service
+  * 消费者: `stock-worker`
+  * key: `order_id`
+  * payload:
+  ```json
+  {
+    "order_id": "1001",
+    "product_id": 10,
+    "count": 2,
+    "reason": "timeout"
+  }
+  ```
 * order.paid
+  * 生产者：order.service
+  * 消费者: `inventory-worker` `notify-worker`
+  * key: `order_id`
+  * payload:
+  ```json
+  {
+    "order_id": "1001",
+    "user_id": 88,
+    "paid_at": 1700000000
+  }
+  ```
 * stock.deduct.requested
+  * 生产者：`order-service`
+  * 消费者: `product-worker`
+  * key: `product_id`
+  * payload:
+  ```json
+  {
+    "order_id": "1001",
+    "product_id": 10,
+    "count": 2
+  }
+  ```
 * stock.restore.requested
-
-每个 Topic 写清楚：
-
-生产者是谁
-
-消费者是谁
-
-key 用什么
-
-payload 包含哪些字段
-
-是否要求顺序
+  * 生产者：`order-service`
+  * 消费者: `product-worker`
+  * key: `product_id`
+  * payload:
+  ```json
+  {
+    "order_id": "1001",
+    "product_id": 10,
+    "count": 2
+  }
+  ```
 
 任务 3：设计一层 MQ 抽象接口
 ```go
