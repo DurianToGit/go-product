@@ -30,3 +30,5 @@ product-service/.env
 # Editor/IDE
 .idea/
 # .vscode/
+.tmp.driveupload
+.tmp.drivedownload
