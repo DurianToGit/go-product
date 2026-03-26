@@ -12,6 +12,7 @@ type Config struct {
 	DB    DBConfig
 	Redis RedisConfig
 	Etcd  EtcdConfig
+	Kafka Kafka
 }
 
 type AppConfig struct {
@@ -38,6 +39,10 @@ type RedisConfig struct {
 
 type EtcdConfig struct {
 	Endpoints []string
+}
+
+type Kafka struct {
+	Addr []string
 }
 
 var globalConfig atomic.Value
@@ -99,6 +104,9 @@ func loadFromEnv() *Config {
 		},
 		Etcd: EtcdConfig{
 			Endpoints: []string{os.Getenv("ETCD_ADDR")},
+		},
+		Kafka: Kafka{
+			Addr: []string{os.Getenv("KAFKA_ADDR")},
 		},
 	}
 }
