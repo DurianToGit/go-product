@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"product-service/internal/bootstrap"
 	"time"
@@ -20,6 +21,12 @@ func main() {
 	queue := delayqueue.NewDelayQueue(rdb, "delay:tasks")
 
 	bus := eventbus.NewKafkaBus(cfg.Kafka.Addr)
+	defer func(bus *eventbus.KafkaBus) {
+		err := bus.Close()
+		if err != nil {
+			fmt.Println("close bus error:", err)
+		}
+	}(bus)
 
 	for {
 		now := time.Now().Unix()
@@ -31,30 +38,39 @@ func main() {
 			continue
 		}
 
+		var successMembers []string
+
 		for _, t := range tasks {
 			var task delayqueue.Task
-			_ = json.Unmarshal([]byte(t), &task)
+			if err := json.Unmarshal([]byte(t), &task); err != nil {
+				log.Println("unmarshal error:", err)
+				continue
+			}
 
 			switch task.BizType {
-
 			case "stock.deduct.retry":
-				// 重新投递 Kafka
-				err := bus.Publish(ctx, "stock.deduct.requested", "", task.Payload)
-				if err != nil {
+				if err := bus.Publish(ctx, "stock.deduct.requested", "", task.Payload); err != nil {
 					log.Println("publish error:", err)
 					continue
 				}
+				successMembers = append(successMembers, t)
 
 			case "order.auto_cancel":
-				err := bus.Publish(ctx, "order.cancelled", "", task.Payload)
-				if err != nil {
+				if err := bus.Publish(ctx, "order.cancelled", "", task.Payload); err != nil {
 					log.Println("publish error:", err)
 					continue
 				}
+				successMembers = append(successMembers, t)
+
+			default:
+				log.Println("unknown biz type:", task.BizType)
+				continue
 			}
 		}
 
-		_ = queue.Remove(ctx, tasks)
+		if len(successMembers) > 0 {
+			_ = queue.Remove(ctx, successMembers)
+		}
 
 		time.Sleep(time.Second)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/redis/go-redis/v9"
+	"strconv"
 )
 
 type DelayQueue struct {
@@ -35,7 +36,7 @@ func (q *DelayQueue) Add(ctx context.Context, task interface{}, executeAt int64)
 func (q *DelayQueue) PopReady(ctx context.Context, now int64, limit int64) ([]string, error) {
 	return q.rdb.ZRangeByScore(ctx, q.key, &redis.ZRangeBy{
 		Min:   "0",
-		Max:   string(rune(now)),
+		Max:   strconv.FormatInt(now, 10),
 		Count: limit,
 	}).Result()
 }

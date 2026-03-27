@@ -4,6 +4,7 @@ import (
 	"os"
 	"product-service/pkg/logger"
 	"strconv"
+	"strings"
 	"sync/atomic"
 )
 
@@ -82,6 +83,8 @@ func loadFromEnv() *Config {
 		productCacheTtl = 60
 		logger.L().Warn("PRODUCT_CACHE_TTL not set, use default value 60")
 	}
+	etcdAddr := getEnvAddrs("ETCD_ADDR")
+	kafkaAddrs := getEnvAddrs("KAFKA_ADDR")
 	return &Config{
 		App: AppConfig{
 			Env:             os.Getenv("ENV"),
@@ -103,10 +106,24 @@ func loadFromEnv() *Config {
 			DB:       redisDBInt,
 		},
 		Etcd: EtcdConfig{
-			Endpoints: []string{os.Getenv("ETCD_ADDR")},
+			Endpoints: etcdAddr,
 		},
 		Kafka: Kafka{
-			Addr: []string{os.Getenv("KAFKA_ADDR")},
+			Addr: kafkaAddrs,
 		},
 	}
+}
+
+func getEnvAddrs(key string) []string {
+	raw := strings.TrimSpace(os.Getenv(key))
+	var addrs []string
+	if raw != "" {
+		for _, s := range strings.Split(raw, ",") {
+			s = strings.TrimSpace(s)
+			if s != "" {
+				addrs = append(addrs, s)
+			}
+		}
+	}
+	return addrs
 }
