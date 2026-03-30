@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	kafkago "github.com/segmentio/kafka-go"
-	"log"
+	"go.uber.org/zap"
 	"product-service/internal/bootstrap"
 	"product-service/pkg/kafka"
+	"product-service/pkg/logger"
 )
 
 type StockDeductRequested struct {
@@ -20,20 +21,20 @@ const groupName = "demo-group-id-2"
 
 func main() {
 	cfg := bootstrap.BaseInit()
-	reader := kafka.NewConsumer(cfg.Kafka.Addr, "demo.producer", groupName)
+	reader := kafka.NewConsumer(cfg.Kafka.Addr, "demo.stock.deduct.requested", groupName)
 
 	defer func(reader *kafka.Consumer) {
 		err := reader.Close()
 		if err != nil {
-			log.Printf("close error: %v", err)
+			logger.L().Info("close error", zap.Error(err))
 		}
 	}(reader)
-	log.Println("starting to read messages")
+	logger.L().Info("consumer started")
 
 	ctx := context.Background()
 	err := reader.Consume(ctx, handle)
 	if err != nil {
-		log.Fatalf("consume error: %v", err)
+		logger.L().Error("consume error", zap.Error(err))
 		return
 	}
 }
@@ -42,13 +43,13 @@ func handle(ctx context.Context, msg kafkago.Message) error {
 	var d StockDeductRequested
 	err2 := json.Unmarshal(msg.Value, &d)
 	if err2 != nil {
-		log.Fatalf("json error: %v", err2)
+		return fmt.Errorf("unmarshal kafka message failed: %w", err2)
 	}
-	fmt.Printf("received: key=%s value=%v topic=%s group=%s\n",
-		string(msg.Key),
-		d,
-		msg.Topic,
-		groupName,
+	logger.L().Info("received message",
+		zap.String("key", string(msg.Key)),
+		zap.Any("value", d),
+		zap.String("topic", msg.Topic),
+		zap.String("group", groupName),
 	)
 	return nil
 }

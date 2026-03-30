@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"go.uber.org/zap"
 	"log"
 	"product-service/internal/bootstrap"
 	"product-service/pkg/kafka"
+	"product-service/pkg/logger"
 	"time"
 )
 
@@ -18,12 +20,12 @@ type StockDeductRequested struct {
 
 func main() {
 	cfg := bootstrap.BaseInit()
-	writer := kafka.NewProducer(cfg.Kafka.Addr, "demo.producer")
+	writer := kafka.NewProducer(cfg.Kafka.Addr, "demo.stock.deduct.requested")
 
 	defer func(writer *kafka.Producer) {
 		err := writer.Close()
 		if err != nil {
-			log.Printf("close error: %v", err)
+			logger.L().Info("close error", zap.Error(err))
 		}
 	}(writer)
 
@@ -46,7 +48,7 @@ func main() {
 			log.Fatalf("write error: %v", err)
 		}
 
-		fmt.Println("sent:", key, bytes)
+		logger.L().Info("sent", zap.String("key", key), zap.ByteString("value", bytes))
 		time.Sleep(time.Second)
 	}
 }
