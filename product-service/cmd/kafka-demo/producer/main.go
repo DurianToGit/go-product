@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/segmentio/kafka-go"
 	"log"
+	"product-service/internal/bootstrap"
+	"product-service/pkg/kafka"
 	"time"
 )
 
@@ -16,13 +17,17 @@ type StockDeductRequested struct {
 }
 
 func main() {
-	writer := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{"localhost:9092"},
-		Topic:   "stock.deduct.requested",
-	})
+	cfg := bootstrap.BaseInit()
+	writer := kafka.NewProducer(cfg.Kafka.Addr, "demo.producer")
 
-	defer writer.Close()
+	defer func(writer *kafka.Producer) {
+		err := writer.Close()
+		if err != nil {
+			log.Printf("close error: %v", err)
+		}
+	}(writer)
 
+	ctx := context.Background()
 	for i := 0; i < 10; i++ {
 		d := StockDeductRequested{
 			ProductID: int64(i),
@@ -34,17 +39,14 @@ func main() {
 		if err != nil {
 			log.Fatalf("json error: %v", err)
 		}
-		msg := kafka.Message{
-			Key:   []byte(fmt.Sprintf("product-%d", i%2)), // 故意让 key 重复
-			Value: bytes,
-		}
+		key := fmt.Sprintf("product-test-%d", i%2)
 
-		err = writer.WriteMessages(context.Background(), msg)
+		err = writer.Publish(ctx, key, bytes)
 		if err != nil {
 			log.Fatalf("write error: %v", err)
 		}
 
-		fmt.Println("sent:", string(msg.Key), string(msg.Value))
+		fmt.Println("sent:", key, bytes)
 		time.Sleep(time.Second)
 	}
 }

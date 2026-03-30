@@ -128,3 +128,65 @@
       Publish(ctx context.Context, topic string, key string, payload []byte) error
   }
 ```
+
+## 1. Kafka 的 4 个核心概念
+* Producer
+
+  生产者负责往 topic 写消息。
+* Consumer
+
+  消费者负责从 topic 读取消息并处理。
+
+  重点不是“for 循环读消息”，而是：
+  
+  * 属于哪个 consumer group
+  * 什么时候算处理成功
+  * 什么时候提交 offset
+* Partition
+
+  Kafka 的 topic 不是单队列，而是多分区。
+
+  分区决定三件事：
+
+  * 吞吐能力
+  * 扩展性
+  * 同 key 消息顺序
+* Replica
+
+  副本决定高可用。
+
+## 2. Kafka 与当前 Redis Stream 的对照关系
+| 你当前 Redis Stream | Kafka 对应概念                   |
+| ---------------- | ---------------------------- |
+| Stream           | Topic                        |
+| Consumer Group   | Consumer Group               |
+| 消息 ID            | Offset / record metadata     |
+| XADD             | Producer publish             |
+| XREADGROUP       | Consumer consume             |
+| XACK             | Offset commit                |
+| pending          | 未提交 offset / rebalance 后重投风险 |
+
+## 3. 为什么 D42 不直接替换现有 Redis Stream
+  
+  因为当前项目里，Redis Stream 主链路已经承载了：
+
+  * 订单异步事件
+  * 库存恢复
+  * 幂等消费
+  * pending 接管
+  
+  所以 D42 正确姿势是：
+
+  > 并行引入 Kafka 骨架，先学会，再决定后面哪些链路适合迁。
+
+  这才是工程上正确的顺序。
+## 4. 当前项目里 Kafka 更适合先用于什么
+
+  * demo topic
+  * 非核心异步通知类场景
+  * 后续订单支付后异步处理的候选方案
+## 5. D43/D44/D45 会继续补什么
+   * 重试
+   * 死信
+   * 延迟
+   * 订单支付后异步任务

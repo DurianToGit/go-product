@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/segmentio/kafka-go"
+	kafkago "github.com/segmentio/kafka-go"
 	"log"
+	"product-service/internal/bootstrap"
+	"product-service/pkg/kafka"
 )
 
 type StockDeductRequested struct {
@@ -14,32 +16,39 @@ type StockDeductRequested struct {
 	Count     int64 `json:"count"`
 }
 
-func main() {
-	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{"localhost:9092"},
-		Topic:   "stock.deduct.requested",
-		GroupID: "demo-group2",
-	})
+const groupName = "demo-group-id-2"
 
-	defer reader.Close()
+func main() {
+	cfg := bootstrap.BaseInit()
+	reader := kafka.NewConsumer(cfg.Kafka.Addr, "demo.producer", groupName)
+
+	defer func(reader *kafka.Consumer) {
+		err := reader.Close()
+		if err != nil {
+			log.Printf("close error: %v", err)
+		}
+	}(reader)
 	log.Println("starting to read messages")
 
-	for {
-		msg, err := reader.ReadMessage(context.Background())
-		if err != nil {
-			log.Fatalf("read error: %v", err)
-		}
-		var d StockDeductRequested
-		err2 := json.Unmarshal(msg.Value, &d)
-		if err2 != nil {
-			log.Fatalf("json error: %v", err2)
-		}
-
-		fmt.Printf("received: key=%s value=%v partition=%d offset=%d\n",
-			string(msg.Key),
-			d,
-			msg.Partition,
-			msg.Offset,
-		)
+	ctx := context.Background()
+	err := reader.Consume(ctx, handle)
+	if err != nil {
+		log.Fatalf("consume error: %v", err)
+		return
 	}
+}
+
+func handle(ctx context.Context, msg kafkago.Message) error {
+	var d StockDeductRequested
+	err2 := json.Unmarshal(msg.Value, &d)
+	if err2 != nil {
+		log.Fatalf("json error: %v", err2)
+	}
+	fmt.Printf("received: key=%s value=%v topic=%s group=%s\n",
+		string(msg.Key),
+		d,
+		msg.Topic,
+		groupName,
+	)
+	return nil
 }
