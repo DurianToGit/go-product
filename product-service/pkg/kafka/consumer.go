@@ -24,12 +24,16 @@ func NewConsumer(brokers []string, topic, groupID string) *Consumer {
 
 func (c *Consumer) Consume(ctx context.Context, handler Handler) error {
 	for {
-		msg, err := c.reader.ReadMessage(ctx)
+		msg, err := c.reader.FetchMessage(ctx)
 		if err != nil {
 			return err
 		}
 
-		if err := handler(ctx, msg); err != nil {
+		if err = handler(ctx, msg); err != nil {
+			return err
+		}
+		err = c.reader.CommitMessages(ctx, msg)
+		if err != nil {
 			return err
 		}
 	}
