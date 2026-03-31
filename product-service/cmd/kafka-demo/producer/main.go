@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"go.uber.org/zap"
-	"log"
 	"product-service/internal/bootstrap"
 	"product-service/pkg/kafka"
 	"product-service/pkg/logger"
@@ -13,9 +12,10 @@ import (
 )
 
 type StockDeductRequested struct {
-	ProductID int64 `json:"product_id"`
-	UserID    int64 `json:"user_id"`
-	Count     int64 `json:"count"`
+	ProductID  int64 `json:"product_id"`
+	UserID     int64 `json:"user_id"`
+	Count      int64 `json:"count"`
+	RetryCount int   `json:"retry_count"`
 }
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 	defer func(writer *kafka.Producer) {
 		err := writer.Close()
 		if err != nil {
-			logger.L().Info("close error", zap.Error(err))
+			logger.L().Error("close error", zap.Error(err))
 		}
 	}(writer)
 
@@ -39,13 +39,13 @@ func main() {
 		// d转为byte
 		bytes, err := json.Marshal(d)
 		if err != nil {
-			log.Fatalf("json error: %v", err)
+			logger.L().Error("json error", zap.Error(err))
 		}
 		key := fmt.Sprintf("product-test-%d", i%2)
 
 		err = writer.Publish(ctx, key, bytes)
 		if err != nil {
-			log.Fatalf("write error: %v", err)
+			logger.L().Error("write error", zap.Error(err))
 		}
 
 		logger.L().Info("sent", zap.String("key", key), zap.ByteString("value", bytes))
