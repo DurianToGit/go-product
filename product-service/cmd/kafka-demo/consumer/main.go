@@ -24,35 +24,35 @@ type StockDeductRequested struct {
 }
 
 const (
-	groupName    = "demo-group-id-2"
-	groupName1s  = "demo-group-id-2-1s"
-	groupName5s  = "demo-group-id-2-5s"
-	groupName30s = "demo-group-id-2-30s"
-	GroupNameDlq = "demo-group-id-2-dlq"
-	topicNormal  = "demo.stock.deduct.requested"
-	topic1s      = "demo.stock.deduct.requested.1s"
-	topic5s      = "demo.stock.deduct.requested.5s"
-	topic30s     = "demo.stock.deduct.requested.30s"
-	topicDLQ     = "demo.stock.deduct.requested.dlq"
+	groupName     = "demo-group-id-2"
+	groupName1s   = "demo-group-id-2-1s"
+	groupName5s   = "demo-group-id-2-5s"
+	groupName30s  = "demo-group-id-2-30s"
+	groupNameDLQ  = "demo-group-id-2-dlq"
+	topicNormal   = "demo.stock.deduct.requested"
+	topicRetry1s  = "demo.stock.deduct.retry.1s"
+	topicRetry5s  = "demo.stock.deduct.retry.5s"
+	topicRetry30s = "demo.stock.deduct.retry.30s"
+	topicDLQ      = "demo.stock.deduct.dlq"
 )
 
 func main() {
 	cfg := bootstrap.BaseInit()
 
 	reader := kafka.NewConsumer(cfg.Kafka.Addr, topicNormal, groupName)
-	reader1s := kafka.NewConsumer(cfg.Kafka.Addr, topic1s, groupName1s)
-	reader5s := kafka.NewConsumer(cfg.Kafka.Addr, topic5s, groupName5s)
-	reader30s := kafka.NewConsumer(cfg.Kafka.Addr, topic30s, groupName30s)
-	readerDLQ := kafka.NewConsumer(cfg.Kafka.Addr, topicDLQ, GroupNameDlq)
+	reader1s := kafka.NewConsumer(cfg.Kafka.Addr, topicRetry1s, groupName1s)
+	reader5s := kafka.NewConsumer(cfg.Kafka.Addr, topicRetry5s, groupName5s)
+	reader30s := kafka.NewConsumer(cfg.Kafka.Addr, topicRetry30s, groupName30s)
+	readerDLQ := kafka.NewConsumer(cfg.Kafka.Addr, topicDLQ, groupNameDLQ)
 	producerNormal := kafka.NewProducer(cfg.Kafka.Addr, topicNormal)
-	producer1s := kafka.NewProducer(cfg.Kafka.Addr, topic1s)
-	producer5s := kafka.NewProducer(cfg.Kafka.Addr, topic5s)
-	producer30s := kafka.NewProducer(cfg.Kafka.Addr, topic30s)
+	producer1s := kafka.NewProducer(cfg.Kafka.Addr, topicRetry1s)
+	producer5s := kafka.NewProducer(cfg.Kafka.Addr, topicRetry5s)
+	producer30s := kafka.NewProducer(cfg.Kafka.Addr, topicRetry30s)
 	producerDLQ := kafka.NewProducer(cfg.Kafka.Addr, topicDLQ)
 
 	logger.L().Info("开始监听消息",
 		zap.String("normal_group", groupName),
-		zap.String("dlq_group", GroupNameDlq))
+		zap.String("dlq_group", groupNameDLQ))
 
 	defer func() {
 		if err := reader.Close(); err != nil {
@@ -160,7 +160,11 @@ func consumeRetryTopic(
 			zap.Duration("delay", delay),
 		)
 
-		time.Sleep(delay)
+		select {
+		case <-time.After(delay):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 
 		logger.L().Info("retry message republish to main topic",
 			zap.String("name", name),
@@ -279,11 +283,11 @@ func processMessage(
 	)
 
 	switch targetTopic {
-	case topic1s:
+	case topicRetry1s:
 		return producerRetry1s.Publish(ctx, string(msg.Key), val)
-	case topic5s:
+	case topicRetry5s:
 		return producerRetry5s.Publish(ctx, string(msg.Key), val)
-	case topic30s:
+	case topicRetry30s:
 		return producerRetry30.Publish(ctx, string(msg.Key), val)
 	default:
 		return producerDLQ.Publish(ctx, string(msg.Key), msg.Value)
@@ -302,11 +306,11 @@ func rebuildMessageWithRetryCount(msg kafkago.Message, retryCount int) ([]byte, 
 func nextRetryTopic(retryCount int) string {
 	switch retryCount {
 	case 1:
-		return topic1s
+		return topicRetry1s
 	case 2:
-		return topic5s
+		return topicRetry5s
 	case 3:
-		return topic30s
+		return topicRetry30s
 	default:
 		return topicDLQ
 	}
