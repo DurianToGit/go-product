@@ -44,6 +44,8 @@ var (
 	// 订单已存在,但是订单数据不一致
 	OrderErrOrderAlreadyExist = &Error{Code: 40306, Msg: "订单已存在,但是订单信息不一致"}
 	OrderErrNotEnoughStock    = &Error{Code: 40307, Msg: "库存不足"}
+	OrderNotFound             = &Error{Code: 40308, Msg: "订单不存在"}
+	OrderStatusInvalid        = &Error{Code: 40309, Msg: "订单状态无效"}
 
 	ServerError = &Error{Code: 50000, Msg: "Internal Server Error"}
 )

@@ -13,6 +13,7 @@ import (
 	otelx "product-service/internal/otel"
 	"product-service/internal/registry"
 	"product-service/internal/router"
+	"product-service/pkg/kafka"
 	"product-service/pkg/logger"
 	"product-service/pkg/middleware"
 	"syscall"
@@ -83,6 +84,7 @@ func main() {
 	}()
 
 	<-ctx.Done()
+	// 优雅关闭：关闭注册中心
 	if app.EtcdLoader != nil {
 		defer func(reg *config.EtcdLoader) {
 			err = reg.Close()
@@ -90,6 +92,15 @@ func main() {
 				logger.L().Error("[registry] Close failed.\n", zap.Error(err))
 			}
 		}(app.EtcdLoader)
+	}
+	// 关闭kafka client
+	if kafka.Client != nil {
+		defer func() {
+			err = kafka.Client.Close()
+			if err != nil {
+				logger.L().Error("[kafka] Close failed.\n", zap.Error(err))
+			}
+		}()
 	}
 
 	logger.L().Info("Shutting down server...")

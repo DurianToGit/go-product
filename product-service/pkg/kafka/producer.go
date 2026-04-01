@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"product-service/pkg/event"
 
 	kafkago "github.com/segmentio/kafka-go"
@@ -44,7 +45,13 @@ func (p *Producer) Close() error {
 }
 
 func PublishOrderPaid(ctx context.Context, evt event.OrderPaidEvent) error {
-	data, _ := json.Marshal(evt)
+	if Client == nil {
+		return fmt.Errorf("kafka client is nil")
+	}
+	data, err := json.Marshal(evt)
+	if err != nil {
+		return err
+	}
 
 	return Client.WriteMessages(ctx, kafkago.Message{
 		Topic: TopicOrderPaid,

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	kafkago "github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
 	"product-service/internal/bootstrap"
@@ -24,21 +25,21 @@ func main() {
 	}()
 	ctx := context.Background()
 	err := reader.Consume(ctx, func(ctx context.Context, msg kafkago.Message) error {
-		handleOrderPaid(msg)
-		return nil
+		return handleOrderPaid(msg)
 	})
 	if err != nil {
 		logger.L().Error("消费订单支付事件失败：", zap.Error(err))
 	}
 }
 
-func handleOrderPaid(msg kafkago.Message) {
+func handleOrderPaid(msg kafkago.Message) error {
 	var evt event.OrderPaidEvent
 	err := json.Unmarshal(msg.Value, &evt)
 	if err != nil {
 		logger.L().Error("解析订单支付事件失败：", zap.Error(err), zap.Any("data", evt))
-		return
+		return fmt.Errorf("反序列化订单支付事件失败: %w", err)
 	}
 
-	logger.L().Info("增加积分：", zap.Int64("user_id", evt.UserID))
+	logger.L().Info("增加积分：", zap.Any("data", evt))
+	return nil
 }

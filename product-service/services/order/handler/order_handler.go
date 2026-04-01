@@ -7,6 +7,7 @@ import (
 	"product-service/pkg/response"
 	"product-service/pkg/utils"
 	"product-service/services/order/service"
+	"strconv"
 )
 
 type OrderCreatedReq struct {
@@ -54,13 +55,12 @@ func (h *OrderHandler) Create(c *gin.Context) {
 }
 
 func (h *OrderHandler) Pay(c *gin.Context) {
-	var req struct {
-		OrderID int64 `json:"order_id" binding:"required"`
-	}
-	if !utils.BindAndValidateByJSON(c, &req) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.ErrorWithErrno(c, errno.InvalidParams)
 		return
 	}
-	err := h.svc.Pay(c, req.OrderID)
+	err = h.svc.Pay(c, id)
 	if err != nil {
 		response.ErrorWithErrno(c, errno.ServerError)
 		return

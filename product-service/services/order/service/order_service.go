@@ -143,14 +143,22 @@ func (s *OrderService) Get(ctx context.Context, id int64) (*domain.Order, error)
 }
 
 func (s *OrderService) Pay(ctx context.Context, orderID int64) error {
-	// 1. 更新订单状态
-	err := s.Repo.MarkPaid(ctx, orderID)
+	// 查询订单信息（构建事件）
+	order, err := s.Repo.Get(ctx, orderID)
 	if err != nil {
 		return err
 	}
-
-	// 2. 查询订单信息（构建事件）
-	order, _ := s.Repo.Get(ctx, orderID)
+	if order == nil {
+		return errno.OrderNotFound
+	}
+	if order.Status != domain.OrderStatusCreated {
+		return errno.OrderStatusInvalid
+	}
+	// 更新订单状态
+	err = s.Repo.MarkPaid(ctx, orderID)
+	if err != nil {
+		return err
+	}
 
 	// 3. 发布事件
 	evt := event.OrderPaidEvent{
