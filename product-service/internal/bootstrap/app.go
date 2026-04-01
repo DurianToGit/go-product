@@ -15,6 +15,7 @@ import (
 	"product-service/pkg/breaker"
 	"product-service/pkg/configwatch"
 	"product-service/pkg/db"
+	"product-service/pkg/kafka"
 	"product-service/pkg/logger"
 	"product-service/pkg/redis"
 	handlerOrder "product-service/services/order/handler"
@@ -106,6 +107,8 @@ func InitApp() *App {
 	// 熔断器
 	redisBreaker := breaker.New(5, 10*time.Second) // // 连续失败 5 次, 熔断器开启 10 秒
 	redis.SetBreaker(redisBreaker)
+	// 初始化kafka client
+	kafka.InitClient(cfg.Kafka.Addr)
 
 	// 迁移
 	_ = mySQL.AutoMigrate(

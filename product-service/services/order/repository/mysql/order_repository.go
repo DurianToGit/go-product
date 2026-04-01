@@ -26,6 +26,7 @@ func (r *OrderRepository) Create(ctx context.Context, order *domain.Order) (*dom
 		UserID:    order.UserID,
 		ProductID: order.ProductID,
 		Count:     order.Count,
+		Amount:    order.Amount,
 		Status:    order.Status,
 		IdemKey:   order.IdemKey,
 	}
@@ -81,4 +82,11 @@ func (r *OrderRepository) CancelExpired(ctx context.Context, deadline time.Time)
 		Update("status", domain.OrderStatusCanceled)
 
 	return tx2.RowsAffected, data, tx2.Error
+}
+
+func (r *OrderRepository) MarkPaid(ctx context.Context, id int64) error {
+	return r.db.WithContext(ctx).Model(&model.OrderModel{}).
+		Where("id = ?", id).
+		Where("status = ?", domain.OrderStatusCreated).
+		Update("status", domain.OrderStatusPaid).Error
 }

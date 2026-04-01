@@ -38,6 +38,8 @@ const (
 
 func main() {
 	cfg := bootstrap.BaseInit()
+	logger.InitFromEnv("kafka-demo-consumer")
+	defer logger.Sync()
 
 	reader := kafka.NewConsumer(cfg.Kafka.Addr, topicNormal, groupName)
 	reader1s := kafka.NewConsumer(cfg.Kafka.Addr, topicRetry1s, groupName1s)

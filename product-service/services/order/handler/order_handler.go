@@ -52,3 +52,18 @@ func (h *OrderHandler) Create(c *gin.Context) {
 	response.Success(c, o)
 	return
 }
+
+func (h *OrderHandler) Pay(c *gin.Context) {
+	var req struct {
+		OrderID int64 `json:"order_id" binding:"required"`
+	}
+	if !utils.BindAndValidateByJSON(c, &req) {
+		return
+	}
+	err := h.svc.Pay(c, req.OrderID)
+	if err != nil {
+		response.ErrorWithErrno(c, errno.ServerError)
+		return
+	}
+	response.Success(c, nil)
+}

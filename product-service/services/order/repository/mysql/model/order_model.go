@@ -12,6 +12,7 @@ type OrderModel struct {
 	OrderNo   string    `gorm:"not null;type:varchar(100);uniqueIndex:idx_order_no"`
 	UserID    int64     `gorm:"not null;index:idx_user_id;uniqueIndex:uk_user_idem,priority:1"`
 	ProductID int64     `gorm:"not null;index:idx_product_id"`
+	Amount    int64     `gorm:"not null"`
 	Count     int       `gorm:"not null;default:1"`
 	Status    string    `gorm:"type:varchar(32);not null;default:'created'"`
 	IdemKey   string    `gorm:"type:varchar(128);not null;uniqueIndex:uk_user_idem,priority:2"`
@@ -29,6 +30,7 @@ func (order *OrderModel) ToOrderDomain() *domain.Order {
 		UserID:    order.UserID,
 		ProductID: order.ProductID,
 		Count:     order.Count,
+		Amount:    order.Amount,
 		Status:    order.Status,
 		IdemKey:   order.IdemKey,
 		CreatedAt: order.CreatedAt,

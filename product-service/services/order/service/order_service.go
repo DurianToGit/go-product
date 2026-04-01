@@ -7,6 +7,8 @@ import (
 	"product-service/internal/client/productclient"
 	"product-service/internal/config"
 	"product-service/internal/errno"
+	"product-service/pkg/event"
+	"product-service/pkg/kafka"
 	"product-service/pkg/logger"
 	redisPkg "product-service/pkg/redis"
 	"product-service/pkg/stream"
@@ -63,6 +65,7 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 		return nil, errno.OrderErrNotEnoughStock
 	}
 
+	amount := product.Price * int64(count)
 	// 创建新订单
 	order = &domain.Order{
 		OrderNo:   s.Gen.GenerateOrderID(),
@@ -70,8 +73,10 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 		ProductID: productID,
 		Status:    domain.OrderStatusCreated,
 		Count:     count,
+		Amount:    amount,
 		IdemKey:   idemKey,
 	}
+	logger.L().Info("创建订单", zap.Any("order", order))
 
 	result, err := s.Repo.Create(ctx, order)
 	if err != nil {
@@ -135,4 +140,31 @@ func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout
 
 func (s *OrderService) Get(ctx context.Context, id int64) (*domain.Order, error) {
 	return s.Repo.Get(ctx, id)
+}
+
+func (s *OrderService) Pay(ctx context.Context, orderID int64) error {
+	// 1. 更新订单状态
+	err := s.Repo.MarkPaid(ctx, orderID)
+	if err != nil {
+		return err
+	}
+
+	// 2. 查询订单信息（构建事件）
+	order, _ := s.Repo.Get(ctx, orderID)
+
+	// 3. 发布事件
+	evt := event.OrderPaidEvent{
+		OrderID: order.ID,
+		UserID:  order.UserID,
+		Amount:  order.Amount,
+		PaidAt:  time.Now().Unix(),
+	}
+
+	err = kafka.PublishOrderPaid(ctx, evt) // D45先不处理失败重试
+	if err != nil {
+		logger.L().Error("发布订单支付事件失败", zap.Error(err))
+		// return err
+	}
+
+	return nil
 }

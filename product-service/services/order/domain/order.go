@@ -8,6 +8,7 @@ type Order struct {
 	UserID    int64     `json:"user_id"`
 	ProductID int64     `json:"product_id"`
 	Count     int       `json:"count"`
+	Amount    int64     `json:"amount"`
 	Status    string    `json:"status"`
 	IdemKey   string    `json:"idem_key"`
 	CreatedAt time.Time `json:"created_at"`
