@@ -13,6 +13,7 @@ import (
 	"product-service/pkg/logger"
 	"sync"
 	"syscall"
+	"time"
 )
 
 type StockDeductRequested struct {
@@ -24,9 +25,14 @@ type StockDeductRequested struct {
 
 const (
 	groupName    = "demo-group-id-2"
-	dlqGroupName = "demo-group-id-2-dlq"
-	maxRetries   = 3
+	groupName1s  = "demo-group-id-2-1s"
+	groupName5s  = "demo-group-id-2-5s"
+	groupName30s = "demo-group-id-2-30s"
+	GroupNameDlq = "demo-group-id-2-dlq"
 	topicNormal  = "demo.stock.deduct.requested"
+	topic1s      = "demo.stock.deduct.requested.1s"
+	topic5s      = "demo.stock.deduct.requested.5s"
+	topic30s     = "demo.stock.deduct.requested.30s"
 	topicDLQ     = "demo.stock.deduct.requested.dlq"
 )
 
@@ -34,23 +40,47 @@ func main() {
 	cfg := bootstrap.BaseInit()
 
 	reader := kafka.NewConsumer(cfg.Kafka.Addr, topicNormal, groupName)
-	readerDLQ := kafka.NewConsumer(cfg.Kafka.Addr, topicDLQ, dlqGroupName)
+	reader1s := kafka.NewConsumer(cfg.Kafka.Addr, topic1s, groupName1s)
+	reader5s := kafka.NewConsumer(cfg.Kafka.Addr, topic5s, groupName5s)
+	reader30s := kafka.NewConsumer(cfg.Kafka.Addr, topic30s, groupName30s)
+	readerDLQ := kafka.NewConsumer(cfg.Kafka.Addr, topicDLQ, GroupNameDlq)
 	producerNormal := kafka.NewProducer(cfg.Kafka.Addr, topicNormal)
+	producer1s := kafka.NewProducer(cfg.Kafka.Addr, topic1s)
+	producer5s := kafka.NewProducer(cfg.Kafka.Addr, topic5s)
+	producer30s := kafka.NewProducer(cfg.Kafka.Addr, topic30s)
 	producerDLQ := kafka.NewProducer(cfg.Kafka.Addr, topicDLQ)
 
 	logger.L().Info("开始监听消息",
 		zap.String("normal_group", groupName),
-		zap.String("dlq_group", dlqGroupName))
+		zap.String("dlq_group", GroupNameDlq))
 
 	defer func() {
 		if err := reader.Close(); err != nil {
 			logger.L().Error("关闭消费者失败", zap.Error(err))
+		}
+		if err := reader1s.Close(); err != nil {
+			logger.L().Error("关闭1s队列消费者失败", zap.Error(err))
+		}
+		if err := reader5s.Close(); err != nil {
+			logger.L().Error("关闭5s队列消费者失败", zap.Error(err))
+		}
+		if err := reader30s.Close(); err != nil {
+			logger.L().Error("关闭30s队列消费者失败", zap.Error(err))
 		}
 		if err := readerDLQ.Close(); err != nil {
 			logger.L().Error("关闭死信队列消费者失败", zap.Error(err))
 		}
 		if err := producerNormal.Close(); err != nil {
 			logger.L().Error("关闭生产者失败", zap.Error(err))
+		}
+		if err := producer1s.Close(); err != nil {
+			logger.L().Error("关闭1s队列生产者失败", zap.Error(err))
+		}
+		if err := producer5s.Close(); err != nil {
+			logger.L().Error("关闭5s队列生产者失败", zap.Error(err))
+		}
+		if err := producer30s.Close(); err != nil {
+			logger.L().Error("关闭30s队列生产者失败", zap.Error(err))
 		}
 		if err := producerDLQ.Close(); err != nil {
 			logger.L().Error("关闭死信队列生产者失败", zap.Error(err))
@@ -62,11 +92,26 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	wg.Add(2)
+	wg.Add(5)
 
 	go func() {
 		defer wg.Done()
-		consumeNormal(ctx, reader, producerNormal, producerDLQ)
+		consumeNormal(ctx, reader, producer1s, producer5s, producer30s, producerDLQ)
+	}()
+
+	go func() {
+		defer wg.Done()
+		consumeRetryTopic(ctx, reader1s, 1*time.Second, producerNormal, "retry-1s")
+	}()
+
+	go func() {
+		defer wg.Done()
+		consumeRetryTopic(ctx, reader5s, 5*time.Second, producerNormal, "retry-5s")
+	}()
+
+	go func() {
+		defer wg.Done()
+		consumeRetryTopic(ctx, reader30s, 30*time.Second, producerNormal, "retry-30s")
 	}()
 
 	go func() {
@@ -85,14 +130,51 @@ func main() {
 	logger.L().Info("所有消费者已停止")
 }
 
-func consumeNormal(ctx context.Context, reader *kafka.Consumer, producerNormal, producerDLQ *kafka.Producer) {
+func consumeNormal(ctx context.Context, reader *kafka.Consumer, producer1s, producer5s, producer30s, producerDLQ *kafka.Producer) {
 	logger.L().Info("普通队列消费者已启动")
 	err := reader.Consume(ctx, func(ctx context.Context, msg kafkago.Message) error {
-		return processMessage(ctx, msg, producerNormal, producerDLQ)
+		return processMessage(ctx, msg, producer1s, producer5s, producer30s, producerDLQ)
 	})
 	if err != nil {
 		logger.L().Error("消费队列异常", zap.Error(err))
 		return
+	}
+}
+
+func consumeRetryTopic(
+	ctx context.Context,
+	reader *kafka.Consumer,
+	delay time.Duration,
+	producerNormal *kafka.Producer,
+	name string,
+) {
+	logger.L().Info("retry consumer started",
+		zap.String("name", name),
+		zap.Duration("delay", delay),
+	)
+
+	err := reader.Consume(ctx, func(ctx context.Context, msg kafkago.Message) error {
+		logger.L().Info("retry message received",
+			zap.String("name", name),
+			zap.String("key", string(msg.Key)),
+			zap.Duration("delay", delay),
+		)
+
+		time.Sleep(delay)
+
+		logger.L().Info("retry message republish to main topic",
+			zap.String("name", name),
+			zap.String("key", string(msg.Key)),
+		)
+
+		return producerNormal.Publish(ctx, string(msg.Key), msg.Value)
+	})
+
+	if err != nil {
+		logger.L().Error("retry consumer failed",
+			zap.String("name", name),
+			zap.Error(err),
+		)
 	}
 }
 
@@ -110,35 +192,6 @@ func consumeDLQ(ctx context.Context, reader *kafka.Consumer) {
 	if err != nil {
 		logger.L().Error("死信队列消费者异常", zap.Error(err))
 	}
-}
-
-func publishToRetry(
-	ctx context.Context,
-	msg kafkago.Message,
-	nextRetry int,
-	producer *kafka.Producer,
-) error {
-	var req StockDeductRequested
-	if err := json.Unmarshal(msg.Value, &req); err != nil {
-		return err
-	}
-	req.RetryCount = nextRetry
-
-	val, err := json.Marshal(req)
-	if err != nil {
-		return err
-	}
-
-	return producer.Publish(ctx, string(msg.Key), val)
-}
-
-func publishToDLQ(
-	ctx context.Context,
-	msg kafkago.Message,
-	retryCount int,
-	producer *kafka.Producer,
-) error {
-	return producer.Publish(ctx, string(msg.Key), msg.Value)
 }
 
 func handleStockDeduct(ctx context.Context, msg kafkago.Message) error {
@@ -164,72 +217,99 @@ func handleStockDeduct(ctx context.Context, msg kafkago.Message) error {
 	return nil
 }
 
-func extractRetryCount(msg kafkago.Message) int {
-	retryCount := 0
+func extractRetryCount(msg kafkago.Message) (int, error) {
 	var req StockDeductRequested
 	if err := json.Unmarshal(msg.Value, &req); err != nil {
-		logger.L().Error("解码 Kafka 消息失败，返回超过最大重试次数，转去死信队列", zap.Error(err))
-		return maxRetries + 1
+		return 0, err
 	}
-	retryCount = req.RetryCount
-	return retryCount
+	return req.RetryCount, nil
 }
 
 func processMessage(
 	ctx context.Context,
 	msg kafkago.Message,
-	producerNormal *kafka.Producer,
+	producerRetry1s *kafka.Producer,
+	producerRetry5s *kafka.Producer,
+	producerRetry30 *kafka.Producer,
 	producerDLQ *kafka.Producer,
 ) error {
 	err := handleStockDeduct(ctx, msg)
 	if err == nil {
-		// 成功：提交 offset
 		return nil
 	}
 
-	retryCount := extractRetryCount(msg)
+	retryCount, err2 := extractRetryCount(msg)
+	if err2 != nil {
+		logger.L().Warn("extract retry count failed, send to dlq",
+			zap.Error(err2),
+		)
+		return producerDLQ.Publish(ctx, string(msg.Key), msg.Value)
+	}
 
-	// 1. 不可重试错误：直接进 DLQ
+	// 不可重试：直接 DLQ
 	if kafka.IsNonRetryable(err) {
-		logger.L().Warn("不可重试错误，发送至 DLQ",
+		logger.L().Warn("non-retryable error, send to dlq",
 			zap.Error(err),
 			zap.Int("retry_count", retryCount),
 		)
-		return publishToDLQ(ctx, msg, retryCount, producerDLQ)
+		return producerDLQ.Publish(ctx, string(msg.Key), msg.Value)
 	}
 
-	// 2. 可重试错误：先看是否超过次数
-	if kafka.IsRetryable(err) {
-		if retryCount >= maxRetries {
-			logger.L().Warn("重试次数已达上限，发送至 DLQ",
-				zap.Error(err),
-				zap.Int("retry_count", retryCount),
-			)
-			return publishToDLQ(ctx, msg, retryCount, producerDLQ)
-		}
+	// 可重试 / 未分类错误：进入下一层延迟 topic
+	nextCount := retryCount + 1
+	targetTopic := nextRetryTopic(nextCount)
 
-		logger.L().Info("可重试消息，重新发布",
+	if targetTopic == topicDLQ {
+		logger.L().Warn("retry exceeded, send to dlq",
 			zap.Error(err),
 			zap.Int("retry_count", retryCount),
 		)
-		return publishToRetry(ctx, msg, retryCount+1, producerNormal)
+		return producerDLQ.Publish(ctx, string(msg.Key), msg.Value)
 	}
 
-	// 3. 未分类错误：当前阶段建议按“可重试”处理，或者记 error 后返回
-	// 为了 D43 更稳，我建议未分类先按 retryable 处理，但也要受 maxRetries 限制
-	if retryCount >= maxRetries {
-		logger.L().Error("未知错误已超过最大重试次数，将转至死信队列。",
-			zap.Error(err),
-			zap.Int("retry_count", retryCount),
-		)
-		return publishToDLQ(ctx, msg, retryCount, producerDLQ)
+	val, err3 := rebuildMessageWithRetryCount(msg, nextCount)
+	if err3 != nil {
+		return err3
 	}
 
-	logger.L().Error("未知错误，转去重试",
+	logger.L().Info("send to retry topic",
 		zap.Error(err),
-		zap.Int("retry_count", retryCount),
+		zap.Int("retry_count", nextCount),
+		zap.String("target_topic", targetTopic),
 	)
-	return publishToRetry(ctx, msg, retryCount+1, producerNormal)
+
+	switch targetTopic {
+	case topic1s:
+		return producerRetry1s.Publish(ctx, string(msg.Key), val)
+	case topic5s:
+		return producerRetry5s.Publish(ctx, string(msg.Key), val)
+	case topic30s:
+		return producerRetry30.Publish(ctx, string(msg.Key), val)
+	default:
+		return producerDLQ.Publish(ctx, string(msg.Key), msg.Value)
+	}
+}
+
+func rebuildMessageWithRetryCount(msg kafkago.Message, retryCount int) ([]byte, error) {
+	var req StockDeductRequested
+	if err := json.Unmarshal(msg.Value, &req); err != nil {
+		return nil, err
+	}
+	req.RetryCount = retryCount
+	return json.Marshal(req)
+}
+
+func nextRetryTopic(retryCount int) string {
+	switch retryCount {
+	case 1:
+		return topic1s
+	case 2:
+		return topic5s
+	case 3:
+		return topic30s
+	default:
+		return topicDLQ
+	}
 }
 
 func isProductIDAvailable(productID int64) bool {
