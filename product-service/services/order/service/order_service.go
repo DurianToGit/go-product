@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 	"product-service/internal/client/productclient"
 	"product-service/internal/config"
 	"product-service/internal/errno"
@@ -15,6 +17,7 @@ import (
 	"product-service/pkg/utils"
 	"product-service/services/order/domain"
 	"product-service/services/order/repository"
+	"product-service/services/order/repository/mysql/model"
 	"strings"
 	"time"
 )
@@ -24,14 +27,18 @@ type OrderService struct {
 	Gen                  *utils.DistributedOrderGenerator
 	productEventProducer *stream.ProductEventProducer
 	productClient        productclient.Client
+	OutboxRepo           repository.OutboxRepository
+	db                   *gorm.DB
 }
 
-func NewOrderService(repo repository.OrderRepository, productClient productclient.Client) *OrderService {
+func NewOrderService(repo repository.OrderRepository, productClient productclient.Client, outboxRepo repository.OutboxRepository, db *gorm.DB) *OrderService {
 	return &OrderService{
 		Repo:                 repo,
 		Gen:                  utils.NewDistributedOrderGenerator("order_"),
 		productEventProducer: stream.NewProductEventProducer(redisPkg.Client),
 		productClient:        productClient,
+		OutboxRepo:           outboxRepo,
+		db:                   db,
 	}
 }
 
@@ -143,6 +150,57 @@ func (s *OrderService) Get(ctx context.Context, id int64) (*domain.Order, error)
 }
 
 func (s *OrderService) Pay(ctx context.Context, orderID int64) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		order, err := s.Repo.GetTx(ctx, tx, orderID)
+		if err != nil {
+			return err
+		}
+		if order == nil {
+			return errno.OrderNotFound
+		}
+		if order.Status != "created" {
+			return errno.OrderStatusInvalid
+		}
+
+		if err := s.Repo.MarkPaidTx(ctx, tx, orderID); err != nil {
+			return err
+		}
+
+		evt := event.OrderPaidEvent{
+			OrderID: order.ID,
+			UserID:  order.UserID,
+			Amount:  order.Amount,
+			PaidAt:  time.Now().Unix(),
+		}
+
+		payload, err := json.Marshal(evt)
+		if err != nil {
+			return err
+		}
+
+		outbox := &model.OutboxEventModel{
+			EventType:  "order_paid",
+			BizID:      order.ID,
+			Payload:    string(payload),
+			Status:     0,
+			RetryCount: 0,
+		}
+
+		if err := s.OutboxRepo.CreateTx(ctx, tx, outbox); err != nil {
+			return err
+		}
+
+		logger.L().Info("order paid and outbox created",
+			zap.Int64("order_id", order.ID),
+			zap.Int64("user_id", order.UserID),
+			zap.String("event_type", outbox.EventType),
+		)
+
+		return nil
+	})
+}
+
+func (s *OrderService) Pay1(ctx context.Context, orderID int64) error {
 	// 查询订单信息（构建事件）
 	order, err := s.Repo.Get(ctx, orderID)
 	if err != nil {
@@ -154,6 +212,7 @@ func (s *OrderService) Pay(ctx context.Context, orderID int64) error {
 	if order.Status != domain.OrderStatusCreated {
 		return errno.OrderStatusInvalid
 	}
+	// return s.Repo
 	// 更新订单状态
 	err = s.Repo.MarkPaid(ctx, orderID)
 	if err != nil {

@@ -39,7 +39,8 @@ func main() {
 
 	// 初始化订单服务
 	repo := mysql.NewOrderRepository(mySQL)
-	orderService := service.NewOrderService(repo, productClient)
+	outboxRepo := mysql.NewOutboxRepository(mySQL)
+	orderService := service.NewOrderService(repo, productClient, outboxRepo, mySQL)
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

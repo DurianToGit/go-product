@@ -97,3 +97,41 @@ func (r *OrderRepository) MarkPaid(ctx context.Context, id int64) error {
 	}
 	return nil
 }
+
+func (r *OrderRepository) GetTx(ctx context.Context, tx *gorm.DB, id int64) (*domain.Order, error) {
+	var m model.OrderModel
+	err := tx.WithContext(ctx).Where("id = ?", id).First(&m).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &domain.Order{
+		ID:        m.ID,
+		OrderNo:   m.OrderNo,
+		UserID:    m.UserID,
+		ProductID: m.ProductID,
+		Count:     m.Count,
+		Status:    m.Status,
+		IdemKey:   m.IdemKey,
+		Amount:    m.Amount,
+	}, nil
+}
+
+func (r *OrderRepository) MarkPaidTx(ctx context.Context, tx *gorm.DB, id int64) error {
+	res := tx.WithContext(ctx).
+		Model(&model.OrderModel{}).
+		Where("id = ?", id).
+		Where("status = ?", domain.OrderStatusCreated).
+		Update("status", domain.OrderStatusPaid)
+
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errno.OrderStatusInvalid
+	}
+	return nil
+}

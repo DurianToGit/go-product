@@ -115,6 +115,7 @@ func InitApp() *App {
 		&modelProduct.ProductModel{},
 		&modelProduct.ProductEventConsumedModel{},
 		&modelOrder.OrderModel{},
+		&modelOrder.OutboxEventModel{},
 		&modelUser.UserModel{},
 	)
 
@@ -132,7 +133,8 @@ func InitApp() *App {
 
 	// 初始化订单服务
 	orderRepo := mysqlOrder.NewOrderRepository(mySQL)
-	orderService := serviceOrder.NewOrderService(orderRepo, productClient)
+	outboxRepo := mysqlOrder.NewOutboxRepository(mySQL)
+	orderService := serviceOrder.NewOrderService(orderRepo, productClient, outboxRepo, mySQL)
 	orderHandler := handlerOrder.NewOrderHandler(orderService)
 
 	return &App{
