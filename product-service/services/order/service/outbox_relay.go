@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	kafkago "github.com/segmentio/kafka-go"
 
 	"go.uber.org/zap"
@@ -52,6 +53,9 @@ func (r *OutboxRelay) RunOnce(ctx context.Context, limit int) (int64, error) {
 }
 
 func (r *OutboxRelay) publishOne(ctx context.Context, evt *orderModel.OutboxEventModel) error {
+	if kafka.Client == nil {
+		return fmt.Errorf("kafka client is nil")
+	}
 	switch evt.EventType {
 	case "order_paid":
 		return kafka.Client.WriteMessages(ctx, kafkago.Message{
@@ -59,6 +63,6 @@ func (r *OutboxRelay) publishOne(ctx context.Context, evt *orderModel.OutboxEven
 			Value: []byte(evt.Payload),
 		})
 	default:
-		return nil
+		return fmt.Errorf("unsupported outbox event type: %s", evt.EventType)
 	}
 }
