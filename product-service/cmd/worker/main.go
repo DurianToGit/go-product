@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"product-service/internal/bootstrap"
 	"product-service/internal/config"
-	otelx "product-service/internal/otel"
 	"product-service/internal/registry"
 	"product-service/pkg/db"
 	"product-service/pkg/logger"
@@ -22,7 +21,6 @@ import (
 	"product-service/services/product/repository/mysql"
 	"strconv"
 	"syscall"
-	"time"
 )
 
 // 单独运行worker执行stream消费者逻辑
@@ -65,26 +63,28 @@ func main() {
 		}
 	}
 
-	shutdown, err := otelx.Init("product-worker")
+	/*shutdown, err := otelx.Init("product-worker")
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = shutdown(ctx)
-	}()
+	}()*/
 
 	// 初始化商品服务
 	productRepo := mysql.NewProductRepository(mySQL)
 	go consumer.Consume(ctx, func(ctx context.Context, msg redis2.XMessage) error {
-		ctx2 := extractCtx(ctx, msg.Values)
-		ctx2, span := otel.Tracer("worker").Start(ctx2, "stream.consume")
-		defer span.End()
+		// ctx2 := extractCtx(ctx, msg.Values)
+		// ctx2, span := otel.Tracer("worker").Start(ctx2, "stream.consume")
+		// defer span.End()
 		// 解析 values
 		eventType, _ := msg.Values["event_type"].(string)
+		logger.L().Info("收到商品事件", zap.String("event_type", eventType))
 		if eventType == domain.ProductEventTypeStockDeducted {
-			return stockStockDeducted(ctx2, msg, productRepo)
+			return stockStockDeducted(ctx, msg, productRepo)
 		} else if eventType == domain.ProductEventTypeRestockDeducted {
-			return restockStockDeducted(ctx2, msg, productRepo)
+			return restockStockDeducted(ctx, msg, productRepo)
 		}
+		logger.L().Warn("未知商品事件", zap.String("event_type", eventType))
 		return nil
 	})
 
@@ -132,7 +132,7 @@ func restockStockDeducted(ctx context.Context, msg redis2.XMessage, productRepo 
 	if err != nil {
 		return err
 	}
-	log.Printf("收到商品库存恢复扣减事件：product_id=%d, count=%d", productID, count)
+	log.Printf("收到恢复商品库存事件：product_id=%d, count=%d", productID, count)
 	// 幂等 + 扣库存（事务内）
 	return productRepo.ConsumeRestockDeductEvent(ctx, rediskeys.ProductStreamKey, msg.ID, productID, count, domain.ProductEventTypeRestockDeducted)
 }
@@ -162,6 +162,8 @@ func toInt64(v any) (int64, error) {
 		return strconv.ParseInt(t, 10, 64)
 	case []byte:
 		return strconv.ParseInt(string(t), 10, 64)
+	case nil:
+		return 0, nil
 	default:
 		return 0, fmt.Errorf("invalid type: %T", v)
 	}

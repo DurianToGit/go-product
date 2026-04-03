@@ -3,7 +3,9 @@ package handler
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"product-service/internal/errno"
+	"product-service/pkg/logger"
 	"product-service/pkg/response"
 	"product-service/pkg/utils"
 	"product-service/services/order/service"
@@ -62,8 +64,44 @@ func (h *OrderHandler) Pay(c *gin.Context) {
 	}
 	err = h.svc.Pay(c, id)
 	if err != nil {
+		if errors.Is(err, errno.OrderNotFound) {
+			response.ErrorWithErrno(c, errno.OrderNotFound)
+			return
+		}
+		if errors.Is(err, errno.OrderStatusInvalid) {
+			response.ErrorWithErrno(c, errno.OrderStatusInvalid)
+			return
+		}
 		response.ErrorWithErrno(c, errno.ServerError)
 		return
 	}
 	response.Success(c, nil)
+}
+
+func (h *OrderHandler) Cancel(c *gin.Context) {
+	idStr := c.Param("id")
+	orderID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		response.ErrorWithErrno(c, errno.InvalidParams)
+		return
+	}
+
+	if err := h.svc.Cancel(c.Request.Context(), orderID); err != nil {
+		if errors.Is(err, errno.OrderNotFound) {
+			response.ErrorWithErrno(c, errno.OrderNotFound)
+			return
+		}
+		if errors.Is(err, errno.OrderStatusInvalid) {
+			response.ErrorWithErrno(c, errno.OrderStatusInvalid)
+			return
+		}
+		logger.L().Error("取消订单失败", zap.Error(err))
+		response.ErrorWithErrno(c, errno.ServerError)
+		return
+	}
+
+	response.Success(c, gin.H{
+		"order_id": orderID,
+		"status":   "cancelled",
+	})
 }

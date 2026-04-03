@@ -8,6 +8,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"product-service/internal/errno"
+	"product-service/pkg/redis"
+	"product-service/pkg/rediskeys"
 	"product-service/services/product/domain"
 	"product-service/services/product/dto"
 	"product-service/services/product/repository/mysql/model"
@@ -242,7 +244,7 @@ func (r *ProductRepository) ConsumeRestockDeductEvent(
 			// Redis 加了 但是产品不存在？
 			return errno.ErrDataNotFound
 		}
-		// TODO 恢复Redis库存,或者后期添加模型的回调事件去恢复库存
+		redis.Client.IncrBy(ctx, rediskeys.ProductStockKey(productID), int64(count))
 
 		return nil
 	})

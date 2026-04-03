@@ -127,7 +127,7 @@ func (c *ProductEventConsumer) consumePending(ctx context.Context, handler Handl
 	}
 
 	for _, msg := range msgs {
-		logger.L().Info("consume pending msg",
+		logger.L().Info("处理待处理消息",
 			zap.String("stream", c.stream),
 			zap.String("group", c.group),
 			zap.String("consumer", c.consumer),
@@ -136,8 +136,9 @@ func (c *ProductEventConsumer) consumePending(ctx context.Context, handler Handl
 
 		herr := handler(ctx, msg)
 		if herr != nil {
-			logger.L().Error("handle pending msg failed",
+			logger.L().Error("处理待定消息失败",
 				zap.String("msg_id", msg.ID),
+				zap.Any("values", msg.Values),
 				zap.Error(herr),
 			)
 			// 不 ACK，留待后续继续重试

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -10,7 +11,6 @@ import (
 	"product-service/internal/config"
 	"product-service/internal/errno"
 	"product-service/pkg/event"
-	"product-service/pkg/kafka"
 	"product-service/pkg/logger"
 	redisPkg "product-service/pkg/redis"
 	"product-service/pkg/stream"
@@ -78,7 +78,7 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 		OrderNo:   s.Gen.GenerateOrderID(),
 		UserID:    userID,
 		ProductID: productID,
-		Status:    domain.OrderStatusCreated,
+		Status:    string(domain.OrderStatusCreated),
 		Count:     count,
 		Amount:    amount,
 		IdemKey:   idemKey,
@@ -112,6 +112,29 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 	return result, nil
 }
 
+func (s *OrderService) Cancel(ctx context.Context, orderID int64) error {
+	order, err := s.Repo.Get(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	if order == nil {
+		return errno.OrderNotFound
+	}
+
+	if !domain.CanTransition(domain.OrderStatus(order.Status), domain.OrderStatusCanceled) {
+		return errno.OrderStatusInvalid
+	}
+
+	err = s.Repo.MarkCancelled(ctx, orderID)
+	if err != nil {
+		if errors.Is(err, errno.OrderStatusInvalid) {
+			return errno.OrderStatusInvalid
+		}
+		return err
+	}
+	return s.restoreStock(ctx, order)
+}
+
 func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout time.Duration) (int64, error) {
 	tr := otel.Tracer("order-service")
 	ctx, span := tr.Start(ctx, "OrderService.CancelExpired")
@@ -125,21 +148,12 @@ func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout
 	if num == 0 {
 		return 0, nil
 	}
-	cfg := config.GetRuntimeConfig()
 	for _, order := range data {
 		// 恢复库存
-		onceKey := stream.SideFxKeyRestock(order.ID)
-		err2 := s.productEventProducer.PublishOnce(ctx, onceKey, map[string]any{
-			"product_id": order.ProductID,
-			"count":      order.Count,
-			"event_type": domain.ProductEventTypeRestockDeducted,
-			"user_id":    order.UserID,
-			"order_id":   order.ID,
-			"source":     "cancelExpiredOrder",
-		}, time.Duration(cfg.OrderCancelTimeoutSec)*time.Second)
-		if err2 != nil {
-			logger.L().Error("恢复库存流发送失败", zap.Error(err2))
-			return num, errno.ErrDependencyUnavailable
+		o := order.ToOrderDomain()
+		err := s.restoreStock(ctx, o)
+		if err != nil {
+			return num, err
 		}
 	}
 	return num, nil
@@ -158,7 +172,7 @@ func (s *OrderService) Pay(ctx context.Context, orderID int64) error {
 		if order == nil {
 			return errno.OrderNotFound
 		}
-		if order.Status != "created" {
+		if !domain.CanTransition(domain.OrderStatus(order.Status), domain.OrderStatusPaid) {
 			return errno.OrderStatusInvalid
 		}
 
@@ -200,38 +214,21 @@ func (s *OrderService) Pay(ctx context.Context, orderID int64) error {
 	})
 }
 
-func (s *OrderService) Pay1(ctx context.Context, orderID int64) error {
-	// 查询订单信息（构建事件）
-	order, err := s.Repo.Get(ctx, orderID)
-	if err != nil {
-		return err
+func (s *OrderService) restoreStock(ctx context.Context, order *domain.Order) error {
+	cfg := config.GetRuntimeConfig()
+	// 恢复库存
+	onceKey := stream.SideFxKeyRestock(order.ID)
+	err2 := s.productEventProducer.PublishOnce(ctx, onceKey, map[string]any{
+		"product_id": order.ProductID,
+		"count":      order.Count,
+		"event_type": domain.ProductEventTypeRestockDeducted,
+		"user_id":    order.UserID,
+		"order_id":   order.ID,
+		"source":     "cancelExpiredOrder",
+	}, time.Duration(cfg.OrderCancelTimeoutSec)*time.Second)
+	if err2 != nil {
+		logger.L().Error("恢复库存流发送失败", zap.Error(err2))
+		return errno.ErrDependencyUnavailable
 	}
-	if order == nil {
-		return errno.OrderNotFound
-	}
-	if order.Status != domain.OrderStatusCreated {
-		return errno.OrderStatusInvalid
-	}
-	// return s.Repo
-	// 更新订单状态
-	err = s.Repo.MarkPaid(ctx, orderID)
-	if err != nil {
-		return err
-	}
-
-	// 3. 发布事件
-	evt := event.OrderPaidEvent{
-		OrderID: order.ID,
-		UserID:  order.UserID,
-		Amount:  order.Amount,
-		PaidAt:  time.Now().Unix(),
-	}
-
-	err = kafka.PublishOrderPaid(ctx, evt) // D45先不处理失败重试
-	if err != nil {
-		logger.L().Error("发布订单支付事件失败", zap.Error(err))
-		// return err
-	}
-
 	return nil
 }

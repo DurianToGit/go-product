@@ -67,6 +67,22 @@ func (r *OrderRepository) Delete(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Delete(&model.OrderModel{}, id).Error
 }
 
+func (r *OrderRepository) MarkCancelled(ctx context.Context, id int64) error {
+	tx := r.db.WithContext(ctx).
+		Model(&model.OrderModel{}).
+		Where("id = ?", id).
+		Where("status = ?", domain.OrderStatusCreated).
+		Update("status", domain.OrderStatusCanceled)
+
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return errno.OrderStatusInvalid
+	}
+	return nil
+}
+
 func (r *OrderRepository) CancelExpired(ctx context.Context, deadline time.Time) (int64, []*model.OrderModel, error) {
 	var data []*model.OrderModel
 	r.db.WithContext(ctx).Model(&model.OrderModel{}).

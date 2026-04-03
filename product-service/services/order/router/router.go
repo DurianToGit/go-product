@@ -10,5 +10,6 @@ func InitOrderRouter(r *gin.RouterGroup, h *handler.OrderHandler) {
 	{
 		group.POST("", h.Create)
 		group.POST(":id/pay", h.Pay)
+		group.POST(":id/cancel", h.Cancel)
 	}
 }

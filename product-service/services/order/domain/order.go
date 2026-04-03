@@ -15,9 +15,31 @@ type Order struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-const OrderStatusCreated = "created"
-const OrderStatusPaid = "paid"
-const OrderStatusCanceled = "canceled"
+type OrderStatus string
+
+const (
+	OrderStatusCreated  OrderStatus = "created"
+	OrderStatusPaid     OrderStatus = "paid"
+	OrderStatusCanceled OrderStatus = "canceled"
+)
 
 const ProductEventTypeStockDeducted = "stock_deducted"
 const ProductEventTypeRestockDeducted = "restock_deducted"
+
+var orderTransitions = map[OrderStatus]map[OrderStatus]struct{}{
+	OrderStatusCreated: {
+		OrderStatusPaid:     {},
+		OrderStatusCanceled: {},
+	},
+	OrderStatusPaid:     {},
+	OrderStatusCanceled: {},
+}
+
+func CanTransition(from, to OrderStatus) bool {
+	next, ok := orderTransitions[from]
+	if !ok {
+		return false
+	}
+	_, ok = next[to]
+	return ok
+}
