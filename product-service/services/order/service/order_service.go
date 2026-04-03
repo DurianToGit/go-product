@@ -132,7 +132,11 @@ func (s *OrderService) Cancel(ctx context.Context, orderID int64) error {
 		}
 		return err
 	}
-	return s.restoreStock(ctx, order)
+	err = s.restoreStock(ctx, order, "userCancelOrder")
+	if err != nil {
+		logger.L().Error("取消订单成功，恢复库存失败", zap.Error(err))
+	}
+	return nil
 }
 
 func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout time.Duration) (int64, error) {
@@ -151,7 +155,7 @@ func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout
 	for _, order := range data {
 		// 恢复库存
 		o := order.ToOrderDomain()
-		err := s.restoreStock(ctx, o)
+		err = s.restoreStock(ctx, o, "cancelExpiredOrder")
 		if err != nil {
 			return num, err
 		}
@@ -214,7 +218,7 @@ func (s *OrderService) Pay(ctx context.Context, orderID int64) error {
 	})
 }
 
-func (s *OrderService) restoreStock(ctx context.Context, order *domain.Order) error {
+func (s *OrderService) restoreStock(ctx context.Context, order *domain.Order, source string) error {
 	cfg := config.GetRuntimeConfig()
 	// 恢复库存
 	onceKey := stream.SideFxKeyRestock(order.ID)
@@ -224,7 +228,7 @@ func (s *OrderService) restoreStock(ctx context.Context, order *domain.Order) er
 		"event_type": domain.ProductEventTypeRestockDeducted,
 		"user_id":    order.UserID,
 		"order_id":   order.ID,
-		"source":     "cancelExpiredOrder",
+		"source":     source,
 	}, time.Duration(cfg.OrderCancelTimeoutSec)*time.Second)
 	if err2 != nil {
 		logger.L().Error("恢复库存流发送失败", zap.Error(err2))

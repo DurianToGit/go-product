@@ -102,6 +102,6 @@ func (h *OrderHandler) Cancel(c *gin.Context) {
 
 	response.Success(c, gin.H{
 		"order_id": orderID,
-		"status":   "cancelled",
+		"status":   "canceled",
 	})
 }

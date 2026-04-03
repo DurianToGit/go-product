@@ -1,4 +1,4 @@
-### 本节只定义三态：created / paid / cancelled
+### 本节只定义三态：created / paid / canceled
 ### 合法流转有哪些
 合法：
 created -> paid

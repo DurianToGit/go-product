@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-sql-driver/mysql"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"product-service/internal/errno"
+	"product-service/pkg/logger"
 	"product-service/pkg/redis"
 	"product-service/pkg/rediskeys"
 	"product-service/services/product/domain"
@@ -244,7 +246,11 @@ func (r *ProductRepository) ConsumeRestockDeductEvent(
 			// Redis 加了 但是产品不存在？
 			return errno.ErrDataNotFound
 		}
-		redis.Client.IncrBy(ctx, rediskeys.ProductStockKey(productID), int64(count))
+		err := redis.Client.IncrBy(ctx, rediskeys.ProductStockKey(productID), int64(count)).Err()
+		if err != nil {
+			logger.L().Info("redis 恢复库存失败", zap.Error(err), zap.Int64("product_id", productID), zap.Int64("count", count))
+			// return err
+		}
 
 		return nil
 	})
