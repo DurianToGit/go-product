@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	kafkago "github.com/segmentio/kafka-go"
+	"product-service/services/order/domain"
 
 	"go.uber.org/zap"
 
@@ -57,9 +58,14 @@ func (r *OutboxRelay) publishOne(ctx context.Context, evt *orderModel.OutboxEven
 		return fmt.Errorf("kafka client is nil")
 	}
 	switch evt.EventType {
-	case "order_paid":
+	case domain.OutboxEventTypeOrderPaid:
 		return kafka.Client.WriteMessages(ctx, kafkago.Message{
 			Topic: kafka.TopicOrderPaid,
+			Value: []byte(evt.Payload),
+		})
+	case domain.OutboxEventTypeOrderCanceled:
+		return kafka.Client.WriteMessages(ctx, kafkago.Message{
+			Topic: kafka.TopicOrderCanceled,
 			Value: []byte(evt.Payload),
 		})
 	default:

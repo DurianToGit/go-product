@@ -1,5 +1,6 @@
 package kafka
 
 const (
-	TopicOrderPaid = "order.paid"
+	TopicOrderPaid     = "order.paid"
+	TopicOrderCanceled = "order.canceled"
 )

@@ -113,30 +113,56 @@ func (s *OrderService) Create(ctx context.Context, userID, productID int64, coun
 }
 
 func (s *OrderService) Cancel(ctx context.Context, orderID int64) error {
-	order, err := s.Repo.Get(ctx, orderID)
-	if err != nil {
-		return err
-	}
-	if order == nil {
-		return errno.OrderNotFound
-	}
-
-	if !domain.CanTransition(domain.OrderStatus(order.Status), domain.OrderStatusCanceled) {
-		return errno.OrderStatusInvalid
-	}
-
-	err = s.Repo.MarkCancelled(ctx, orderID)
-	if err != nil {
-		if errors.Is(err, errno.OrderStatusInvalid) {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		order, err := s.Repo.GetTx(ctx, tx, orderID)
+		if err != nil {
+			return err
+		}
+		if order == nil {
+			return errno.OrderNotFound
+		}
+		if !domain.CanTransition(domain.OrderStatus(order.Status), domain.OrderStatusCanceled) {
 			return errno.OrderStatusInvalid
 		}
-		return err
-	}
-	err = s.restoreStock(ctx, order, "userCancelOrder")
-	if err != nil {
-		logger.L().Error("取消订单成功，恢复库存失败", zap.Error(err))
-	}
-	return nil
+		err = s.Repo.MarkCancelledTx(ctx, tx, orderID)
+		if err != nil {
+			if errors.Is(err, errno.OrderStatusInvalid) {
+				return errno.OrderStatusInvalid
+			}
+			return err
+		}
+		evt := event.OrderCanceledEvent{
+			OrderID:    order.ID,
+			UserID:     order.UserID,
+			ProductID:  order.ProductID,
+			Count:      int64(order.Count),
+			Reason:     "用户取消订单",
+			CanceledAt: time.Now().Unix(),
+		}
+
+		payload, err := json.Marshal(evt)
+		if err != nil {
+			return err
+		}
+
+		outbox := &model.OutboxEventModel{
+			EventType:  domain.OutboxEventTypeOrderCanceled,
+			BizID:      order.ID,
+			Payload:    string(payload),
+			Status:     0,
+			RetryCount: 0,
+		}
+
+		if err = s.OutboxRepo.CreateTx(ctx, tx, outbox); err != nil {
+			return err
+		}
+		logger.L().Info("订单已取消且已创建 outbox 单",
+			zap.Int64("order_id", order.ID),
+			zap.Int64("user_id", order.UserID),
+			zap.String("event_type", outbox.EventType),
+		)
+		return nil
+	})
 }
 
 func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout time.Duration) (int64, error) {
@@ -152,11 +178,36 @@ func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout
 	if num == 0 {
 		return 0, nil
 	}
+	tx := s.db.WithContext(ctx)
 	for _, order := range data {
 		// 恢复库存
-		o := order.ToOrderDomain()
-		err = s.restoreStock(ctx, o, "cancelExpiredOrder")
+		// o := order.ToOrderDomain()
+		evt := event.OrderCanceledEvent{
+			OrderID:    order.ID,
+			UserID:     order.UserID,
+			ProductID:  order.ProductID,
+			Count:      int64(order.Count),
+			Reason:     "超时取消订单",
+			CanceledAt: time.Now().Unix(),
+		}
+
+		payload, err := json.Marshal(evt)
 		if err != nil {
+			return num, err
+		}
+
+		outbox := &model.OutboxEventModel{
+			EventType:  domain.OutboxEventTypeOrderCanceled,
+			BizID:      order.ID,
+			Payload:    string(payload),
+			Status:     0,
+			RetryCount: 0,
+		}
+		if err = s.OutboxRepo.CreateTx(ctx, tx, outbox); err != nil {
+			logger.L().Error("超时取消订单 写入 outbox 失败",
+				zap.Int64("order_id", order.ID),
+				zap.Error(err),
+			)
 			return num, err
 		}
 	}
@@ -197,7 +248,7 @@ func (s *OrderService) Pay(ctx context.Context, orderID int64) error {
 		}
 
 		outbox := &model.OutboxEventModel{
-			EventType:  "order_paid",
+			EventType:  domain.OutboxEventTypeOrderPaid,
 			BizID:      order.ID,
 			Payload:    string(payload),
 			Status:     0,
@@ -208,7 +259,7 @@ func (s *OrderService) Pay(ctx context.Context, orderID int64) error {
 			return err
 		}
 
-		logger.L().Info("order paid and outbox created",
+		logger.L().Info("订单已支付且已创建 outbox 单",
 			zap.Int64("order_id", order.ID),
 			zap.Int64("user_id", order.UserID),
 			zap.String("event_type", outbox.EventType),

@@ -93,6 +93,17 @@ func (r *ProductRepository) Get(ctx context.Context, id int64) (*domain.Product,
 	return toDomain(&p), nil
 }
 
+func (r *ProductRepository) GetTx(ctx context.Context, tx *gorm.DB, id int64) (*domain.Product, error) {
+	var p model.ProductModel
+	if err := tx.WithContext(ctx).First(&p, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errno.ErrDataNotFound
+		}
+		return nil, fmt.Errorf("get product: %w", err)
+	}
+	return toDomain(&p), nil
+}
+
 func (r *ProductRepository) DeductStock(ctx context.Context, productId int64, count int64) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 
@@ -153,16 +164,48 @@ func (r *ProductRepository) DeductStockOptimistic(ctx context.Context, productId
 	return true, nil
 }
 
-func (r *ProductRepository) DeductStockAtomic(ctx context.Context, productId, count int64) (bool, error) {
+func (r *ProductRepository) DeductStockAtomic(ctx context.Context, productID, count int64) (bool, error) {
 	res := r.db.WithContext(ctx).
 		Model(&model.ProductModel{}).
-		Where("id = ? AND stock >= ?", productId, count).
+		Where("id = ? AND stock >= ?", productID, count).
 		Update("stock", gorm.Expr("stock - ?", count))
 
 	if res.Error != nil {
 		return false, res.Error
 	}
+	if err := redis.Client.DecrBy(ctx, rediskeys.ProductStockKey(productID), count).Err(); err != nil {
+		logger.L().Error("扣减 redis 库存失败",
+			zap.Int64("product_id", productID),
+			zap.Int64("count", count),
+			zap.Error(err),
+		)
+	}
+
 	return res.RowsAffected == 1, nil
+}
+
+func (r *ProductRepository) RestoreStock(ctx context.Context, productID int64, count int64) error {
+	tx := r.db.WithContext(ctx).
+		Model(&model.ProductModel{}).
+		Where("id = ?", productID).
+		Update("stock", gorm.Expr("stock + ?", count))
+
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return errno.ErrDataNotFound
+	}
+
+	if err := redis.Client.IncrBy(ctx, rediskeys.ProductStockKey(productID), count).Err(); err != nil {
+		logger.L().Error("恢复 redis 库存失败",
+			zap.Int64("product_id", productID),
+			zap.Int64("count", count),
+			zap.Error(err),
+		)
+	}
+
+	return nil
 }
 
 func (r *ProductRepository) ConsumeStockDeductEvent(
@@ -248,6 +291,9 @@ func (r *ProductRepository) ConsumeRestockDeductEvent(
 		}
 		err := redis.Client.IncrBy(ctx, rediskeys.ProductStockKey(productID), int64(count)).Err()
 		if err != nil {
+			// 此处错误忽略 现在这个项目内并没有做定期的库存重写到redis中，所以这里忽略
+			// 在常规开发中，这里直接删除redis缓存，而不是修改，即使是修改也是可以允许暂时的不一致，定期重写商品库存缓存即可
+			// 或者此类 统一用事务提交到outbox表，统一处理，这里就不在写redis了
 			logger.L().Info("redis 恢复库存失败", zap.Error(err), zap.Int64("product_id", productID), zap.Int64("count", count))
 			// return err
 		}

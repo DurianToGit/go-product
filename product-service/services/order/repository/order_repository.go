@@ -14,6 +14,7 @@ type OrderRepository interface {
 	GetByUserIdemKey(ctx context.Context, userId int64, idemKey string) (*domain.Order, error)
 	Delete(ctx context.Context, id int64) error
 	MarkCancelled(ctx context.Context, id int64) error
+	MarkCancelledTx(ctx context.Context, tx *gorm.DB, id int64) error
 	CancelExpired(ctx context.Context, deadline time.Time) (int64, []*model.OrderModel, error)
 	MarkPaid(ctx context.Context, id int64) error
 	GetTx(ctx context.Context, tx *gorm.DB, id int64) (*domain.Order, error)

@@ -83,6 +83,18 @@ func (r *OrderRepository) MarkCancelled(ctx context.Context, id int64) error {
 	return nil
 }
 
+func (r *OrderRepository) MarkCancelledTx(ctx context.Context, tx *gorm.DB, id int64) error {
+	t := tx.WithContext(ctx).
+		Model(&model.OrderModel{}).
+		Where("id = ?", id).
+		Where("status = ?", domain.OrderStatusCreated).
+		Update("status", domain.OrderStatusCanceled)
+	if t.Error != nil {
+		return t.Error
+	}
+	return nil
+}
+
 func (r *OrderRepository) CancelExpired(ctx context.Context, deadline time.Time) (int64, []*model.OrderModel, error) {
 	var data []*model.OrderModel
 	r.db.WithContext(ctx).Model(&model.OrderModel{}).
