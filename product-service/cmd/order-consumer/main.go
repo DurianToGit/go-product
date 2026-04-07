@@ -7,6 +7,8 @@ import (
 	kafkago "github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"os"
+	"os/signal"
 	"product-service/internal/bootstrap"
 	"product-service/pkg/db"
 	"product-service/pkg/event"
@@ -15,9 +17,11 @@ import (
 	"product-service/pkg/redis"
 	"product-service/services/product/repository/mysql"
 	"sync"
+	"syscall"
 )
 
 var mySQL *gorm.DB
+var productRepo *mysql.ProductRepository
 
 func main() {
 	cfg := bootstrap.BaseInit()
@@ -25,8 +29,7 @@ func main() {
 	logger.InitFromEnv("order-consumer")
 	defer logger.Sync()
 	logger.L().Info("启动订单消费者")
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.DB.DBUser,
 		cfg.DB.DBPass,
@@ -37,15 +40,29 @@ func main() {
 	mySQL = db.InitMySQL(dsn)
 	_ = redis.InitRedis(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
 
-	var wg sync.WaitGroup
+	productRepo = mysql.NewProductRepository(mySQL)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var wg sync.WaitGroup
 	wg.Add(2)
 
 	go consumeOrderCanceled(ctx, cfg.Kafka.Addr, &wg)
 	go consumeOrderPaid(ctx, cfg.Kafka.Addr, &wg)
 
+	// 监听系统信号，实现优雅退出
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigChan
+		logger.L().Info("收到退出信号，正在关闭服务...", zap.String("signal", sig.String()))
+		cancel()
+	}()
+
 	wg.Wait()
-	logger.L().Info("所有消费者已停止")
+	logger.L().Info("所有消费者已停止，服务退出")
 }
 
 func consumeOrderPaid(ctx context.Context, broker []string, wg *sync.WaitGroup) {
@@ -59,14 +76,14 @@ func consumeOrderPaid(ctx context.Context, broker []string, wg *sync.WaitGroup) 
 	}(consumer)
 
 	err := consumer.Consume(ctx, func(ctx context.Context, msg kafkago.Message) error {
-		return handleOrderPaid(msg)
+		return handleOrderPaid(ctx, msg)
 	})
 	if err != nil {
 		logger.L().Error("消费 order.paid 失败", zap.Error(err))
 	}
 }
 
-func handleOrderPaid(msg kafkago.Message) error {
+func handleOrderPaid(ctx context.Context, msg kafkago.Message) error {
 	var evt event.OrderPaidEvent
 	err := json.Unmarshal(msg.Value, &evt)
 	if err != nil {
@@ -89,14 +106,14 @@ func consumeOrderCanceled(ctx context.Context, broker []string, wg *sync.WaitGro
 	}(consumer)
 
 	err := consumer.Consume(ctx, func(ctx context.Context, msg kafkago.Message) error {
-		return handleOrderCanceled(msg)
+		return handleOrderCanceled(ctx, msg)
 	})
 	if err != nil {
 		logger.L().Error("消费 order.canceled 失败", zap.Error(err))
 	}
 }
 
-func handleOrderCanceled(msg kafkago.Message) error {
+func handleOrderCanceled(ctx context.Context, msg kafkago.Message) error {
 	var evt event.OrderCanceledEvent
 	if err := json.Unmarshal(msg.Value, &evt); err != nil {
 		return fmt.Errorf("unmarshal order canceled event failed: %w", err)
@@ -108,14 +125,5 @@ func handleOrderCanceled(msg kafkago.Message) error {
 		zap.Int64("count", evt.Count),
 		zap.String("reason", evt.Reason),
 	)
-
-	return restoreStockByEvent(context.Background(), &evt)
-}
-
-func restoreStockByEvent(ctx context.Context, evt *event.OrderCanceledEvent) error {
-
-	productRepo := mysql.NewProductRepository(mySQL)
-
-	// 这里直接调用你现有 repo 的恢复库存方法
 	return productRepo.RestoreStock(ctx, evt.ProductID, evt.Count)
 }

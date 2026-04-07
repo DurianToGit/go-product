@@ -170,48 +170,58 @@ func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout
 	ctx, span := tr.Start(ctx, "OrderService.CancelExpired")
 	defer span.End()
 	deadline := now.Add(-timeout)
-	num, data, err := s.Repo.CancelExpired(ctx, deadline)
-	if err != nil {
-		logger.L().Error("取消订单失败", zap.Error(err))
-		return 0, err
-	}
+	num, data := s.Repo.Expired(ctx, deadline)
 	if num == 0 {
-		return 0, nil
+		return num, nil
 	}
-	tx := s.db.WithContext(ctx)
+	successCnt := int64(0)
 	for _, order := range data {
-		// 恢复库存
-		// o := order.ToOrderDomain()
-		evt := event.OrderCanceledEvent{
-			OrderID:    order.ID,
-			UserID:     order.UserID,
-			ProductID:  order.ProductID,
-			Count:      int64(order.Count),
-			Reason:     "超时取消订单",
-			CanceledAt: time.Now().Unix(),
-		}
+		err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			evt := event.OrderCanceledEvent{
+				OrderID:    order.ID,
+				UserID:     order.UserID,
+				ProductID:  order.ProductID,
+				Count:      int64(order.Count),
+				Reason:     "超时取消订单",
+				CanceledAt: time.Now().Unix(),
+			}
 
-		payload, err := json.Marshal(evt)
+			payload, err := json.Marshal(evt)
+			if err != nil {
+				return err
+			}
+
+			outbox := &model.OutboxEventModel{
+				EventType:  domain.OutboxEventTypeOrderCanceled,
+				BizID:      order.ID,
+				Payload:    string(payload),
+				Status:     0,
+				RetryCount: 0,
+			}
+			if err = s.Repo.MarkCancelledTx(ctx, tx, order.ID); err != nil {
+				logger.L().Error("取消超时订单 失败",
+					zap.Int64("order_id", order.ID),
+					zap.Error(err),
+				)
+				return err
+			}
+			if err = s.OutboxRepo.CreateTx(ctx, tx, outbox); err != nil {
+				logger.L().Error("取消超时订单 写入 outbox 失败",
+					zap.Int64("order_id", order.ID),
+					zap.Error(err),
+				)
+				return err
+			}
+			return nil
+		})
 		if err != nil {
-			return num, err
-		}
-
-		outbox := &model.OutboxEventModel{
-			EventType:  domain.OutboxEventTypeOrderCanceled,
-			BizID:      order.ID,
-			Payload:    string(payload),
-			Status:     0,
-			RetryCount: 0,
-		}
-		if err = s.OutboxRepo.CreateTx(ctx, tx, outbox); err != nil {
-			logger.L().Error("超时取消订单 写入 outbox 失败",
-				zap.Int64("order_id", order.ID),
-				zap.Error(err),
-			)
-			return num, err
+			continue
+		} else {
+			successCnt++
 		}
 	}
-	return num, nil
+
+	return successCnt, nil
 }
 
 func (s *OrderService) Get(ctx context.Context, id int64) (*domain.Order, error) {

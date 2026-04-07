@@ -92,6 +92,9 @@ func (r *OrderRepository) MarkCancelledTx(ctx context.Context, tx *gorm.DB, id i
 	if t.Error != nil {
 		return t.Error
 	}
+	if t.RowsAffected == 0 {
+		return errno.OrderStatusInvalid
+	}
 	return nil
 }
 
@@ -110,6 +113,19 @@ func (r *OrderRepository) CancelExpired(ctx context.Context, deadline time.Time)
 		Update("status", domain.OrderStatusCanceled)
 
 	return tx2.RowsAffected, data, tx2.Error
+}
+
+func (r *OrderRepository) Expired(ctx context.Context, deadline time.Time) (int64, []*model.OrderModel) {
+	var data []*model.OrderModel
+	r.db.WithContext(ctx).Model(&model.OrderModel{}).
+		Where("status = ? and updated_at < ?", domain.OrderStatusCreated, deadline).
+		Find(&data)
+	var ids []int64
+	for _, v := range data {
+		ids = append(ids, v.ID)
+		logger.L().Info("取消的订单ID", zap.Any("id", v.ID))
+	}
+	return int64(len(data)), data
 }
 
 func (r *OrderRepository) MarkPaid(ctx context.Context, id int64) error {
