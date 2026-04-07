@@ -16,7 +16,7 @@ type OrderRepository interface {
 	MarkCancelled(ctx context.Context, id int64) error
 	MarkCancelledTx(ctx context.Context, tx *gorm.DB, id int64) error
 	CancelExpired(ctx context.Context, deadline time.Time) (int64, []*model.OrderModel, error)
-	Expired(ctx context.Context, deadline time.Time) (int64, []*model.OrderModel)
+	Expired(ctx context.Context, deadline time.Time) (int64, []*model.OrderModel, error)
 	MarkPaid(ctx context.Context, id int64) error
 	GetTx(ctx context.Context, tx *gorm.DB, id int64) (*domain.Order, error)
 	MarkPaidTx(ctx context.Context, tx *gorm.DB, id int64) error

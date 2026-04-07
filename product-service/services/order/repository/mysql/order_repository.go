@@ -115,17 +115,15 @@ func (r *OrderRepository) CancelExpired(ctx context.Context, deadline time.Time)
 	return tx2.RowsAffected, data, tx2.Error
 }
 
-func (r *OrderRepository) Expired(ctx context.Context, deadline time.Time) (int64, []*model.OrderModel) {
+func (r *OrderRepository) Expired(ctx context.Context, deadline time.Time) (int64, []*model.OrderModel, error) {
 	var data []*model.OrderModel
-	r.db.WithContext(ctx).Model(&model.OrderModel{}).
+	err := r.db.WithContext(ctx).Model(&model.OrderModel{}).
 		Where("status = ? and updated_at < ?", domain.OrderStatusCreated, deadline).
-		Find(&data)
-	var ids []int64
-	for _, v := range data {
-		ids = append(ids, v.ID)
-		logger.L().Info("取消的订单ID", zap.Any("id", v.ID))
+		Find(&data).Error
+	if err != nil {
+		return 0, nil, err
 	}
-	return int64(len(data)), data
+	return int64(len(data)), data, nil
 }
 
 func (r *OrderRepository) MarkPaid(ctx context.Context, id int64) error {

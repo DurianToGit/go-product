@@ -170,9 +170,9 @@ func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout
 	ctx, span := tr.Start(ctx, "OrderService.CancelExpired")
 	defer span.End()
 	deadline := now.Add(-timeout)
-	num, data := s.Repo.Expired(ctx, deadline)
-	if num == 0 {
-		return num, nil
+	num, data, err := s.Repo.Expired(ctx, deadline)
+	if num == 0 || err != nil {
+		return num, err
 	}
 	successCnt := int64(0)
 	for _, order := range data {
