@@ -116,6 +116,7 @@ func InitApp() *App {
 		&modelProduct.ProductEventConsumedModel{},
 		&modelOrder.OrderModel{},
 		&modelOrder.OutboxEventModel{},
+		&modelOrder.EventConsumeLog{},
 		&modelUser.UserModel{},
 	)
 

@@ -41,13 +41,14 @@ func (p *Producer) Close() error {
 	return p.writer.Close()
 }
 
-func PublishRaw(ctx context.Context, topic string, data []byte) error {
+func PublishRaw(ctx context.Context, topic string, key []byte, data []byte) error {
 	if Client == nil {
 		return fmt.Errorf("kafka client is nil")
 	}
 
 	return Client.WriteMessages(ctx, kafkago.Message{
 		Topic: topic,
+		Key:   key,
 		Value: data,
 	})
 }

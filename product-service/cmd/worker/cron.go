@@ -19,6 +19,8 @@ import (
 	"time"
 )
 
+// 订单生产者 使用kafka 创建生产者
+
 func main() {
 	logger.InitFromEnv("product-worker-cron")
 	defer logger.Sync()

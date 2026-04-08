@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
-	kafkago "github.com/segmentio/kafka-go"
 	"product-service/services/order/domain"
+	"strconv"
 
 	"go.uber.org/zap"
 
@@ -30,17 +30,23 @@ func (r *OutboxRelay) RunOnce(ctx context.Context, limit int) (int64, error) {
 
 	var successCnt int64
 	for _, evt := range events {
-		if err := r.publishOne(ctx, evt); err != nil {
+		if err = r.publishOne(ctx, evt); err != nil {
 			logger.L().Error("outbox publish failed",
 				zap.Uint64("outbox_id", evt.ID),
 				zap.String("event_type", evt.EventType),
 				zap.Error(err),
 			)
-			_ = r.outboxRepo.IncrementRetry(ctx, int64(evt.ID), err.Error())
+			err = r.outboxRepo.IncrementRetry(ctx, int64(evt.ID), err.Error())
+			if err != nil {
+				logger.L().Error("outbox increment retry failed",
+					zap.Uint64("outbox_id", evt.ID),
+					zap.Error(err),
+				)
+			}
 			continue
 		}
 
-		if err := r.outboxRepo.MarkSent(ctx, int64(evt.ID)); err != nil {
+		if err = r.outboxRepo.MarkSent(ctx, int64(evt.ID)); err != nil {
 			logger.L().Error("mark outbox sent failed",
 				zap.Uint64("outbox_id", evt.ID),
 				zap.Error(err),
@@ -57,17 +63,12 @@ func (r *OutboxRelay) publishOne(ctx context.Context, evt *orderModel.OutboxEven
 	if kafka.Client == nil {
 		return fmt.Errorf("kafka client is nil")
 	}
+	key := []byte(strconv.FormatInt(int64(evt.ID), 10))
 	switch evt.EventType {
 	case domain.OutboxEventTypeOrderPaid:
-		return kafka.Client.WriteMessages(ctx, kafkago.Message{
-			Topic: kafka.TopicOrderPaid,
-			Value: []byte(evt.Payload),
-		})
+		return kafka.PublishRaw(ctx, kafka.TopicOrderPaid, key, []byte(evt.Payload))
 	case domain.OutboxEventTypeOrderCanceled:
-		return kafka.Client.WriteMessages(ctx, kafkago.Message{
-			Topic: kafka.TopicOrderCanceled,
-			Value: []byte(evt.Payload),
-		})
+		return kafka.PublishRaw(ctx, kafka.TopicOrderCanceled, key, []byte(evt.Payload))
 	default:
 		return fmt.Errorf("unsupported outbox event type: %s", evt.EventType)
 	}

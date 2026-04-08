@@ -24,6 +24,7 @@ import (
 )
 
 // 单独运行worker执行stream消费者逻辑
+// 使用 redis stream
 
 func main() {
 	logger.InitFromEnv("product-worker")
