@@ -15,6 +15,7 @@ import (
 	"product-service/pkg/kafka"
 	"product-service/pkg/logger"
 	"product-service/pkg/redis"
+	"product-service/services/order/repository"
 	orderMysql "product-service/services/order/repository/mysql"
 	"product-service/services/product/repository/mysql"
 	"sync"
@@ -69,7 +70,7 @@ func main() {
 	logger.L().Info("所有消费者已停止，服务退出")
 }
 
-func consumeOrderPaid(ctx context.Context, broker []string, wg *sync.WaitGroup, logRepo *orderMysql.EventConsumeLogRepository) {
+func consumeOrderPaid(ctx context.Context, broker []string, wg *sync.WaitGroup, logRepo repository.EventConsumeLogRepository) {
 	defer wg.Done()
 	consumer := kafka.NewConsumer(broker, kafka.TopicOrderPaid, kafka.GroupOrderPaid)
 	defer func(consumer *kafka.Consumer) {
@@ -87,7 +88,7 @@ func consumeOrderPaid(ctx context.Context, broker []string, wg *sync.WaitGroup, 
 	}
 }
 
-func handleOrderPaid(ctx context.Context, msg kafkago.Message, logRepo *orderMysql.EventConsumeLogRepository) error {
+func handleOrderPaid(ctx context.Context, msg kafkago.Message, logRepo repository.EventConsumeLogRepository) error {
 	var evt event.OrderPaidEvent
 	err := json.Unmarshal(msg.Value, &evt)
 	if err != nil {
@@ -100,7 +101,7 @@ func handleOrderPaid(ctx context.Context, msg kafkago.Message, logRepo *orderMys
 	}
 	ok, err := logRepo.TryConsume(ctx, eventID, kafka.GroupOrderPaid)
 	if err != nil {
-		return fmt.Errorf("try consume order canceled failed: %w", err)
+		return fmt.Errorf("try consume order paid failed: %w", err)
 	}
 	if !ok {
 		logger.L().Info("订单支付事件已处理过",
@@ -110,11 +111,28 @@ func handleOrderPaid(ctx context.Context, msg kafkago.Message, logRepo *orderMys
 		)
 		return nil
 	}
-	logger.L().Info("增加积分：", zap.Any("data", evt))
+
+	if err := processOrderPaid(ctx, evt); err != nil {
+		return fmt.Errorf("process order paid failed: %w", err)
+	}
 	return nil
 }
 
-func consumeOrderCanceled(ctx context.Context, broker []string, wg *sync.WaitGroup, logRepo *orderMysql.EventConsumeLogRepository) {
+// 订单支付事件处理
+func processOrderPaid(ctx context.Context, evt event.OrderPaidEvent) error {
+	// TODO:
+	logger.L().Info("处理订单支付事件：", zap.Any("data", evt))
+	// 1. 加积分
+	logger.L().Info("增加积分")
+	// 2. 发通知
+	logger.L().Info("发送通知")
+	// 3. 生成发货单
+	logger.L().Info("生成发货单")
+	// ...更多业务处理
+	return nil
+}
+
+func consumeOrderCanceled(ctx context.Context, broker []string, wg *sync.WaitGroup, logRepo repository.EventConsumeLogRepository) {
 	defer wg.Done()
 	consumer := kafka.NewConsumer(broker, kafka.TopicOrderCanceled, kafka.GroupOrderCanceled)
 	defer func(consumer *kafka.Consumer) {
@@ -132,7 +150,7 @@ func consumeOrderCanceled(ctx context.Context, broker []string, wg *sync.WaitGro
 	}
 }
 
-func handleOrderCanceled(ctx context.Context, msg kafkago.Message, logRepo *orderMysql.EventConsumeLogRepository) error {
+func handleOrderCanceled(ctx context.Context, msg kafkago.Message, logRepo repository.EventConsumeLogRepository) error {
 	var evt event.OrderCanceledEvent
 	if err := json.Unmarshal(msg.Value, &evt); err != nil {
 		return fmt.Errorf("unmarshal order canceled event failed: %w", err)

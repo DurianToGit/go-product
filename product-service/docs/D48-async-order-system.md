@@ -42,6 +42,11 @@ Kafka 至少一次投递，消息可能重复消费。
 - 首次消费插入成功才执行业务
 - 重复消费直接跳过
 
+补充
+- event_id 来源于 outbox_event.id。
+- OutboxRelay 发布 Kafka 时，将 outbox 主键写入 message key。
+- Consumer 通过 msg.Key 获取 event_id，再写入 event_consume_log 做去重。
+
 ## 7. 当前系统能力边界
 当前已完成：
 - order.paid
