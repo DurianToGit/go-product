@@ -6,8 +6,8 @@ import (
 	"product-service/internal/client/productclient"
 	"product-service/internal/config"
 	"product-service/internal/errno"
+	"product-service/pkg/event"
 	"product-service/pkg/logger"
-	"product-service/pkg/pb/orderpb"
 	redisPkg "product-service/pkg/redis"
 	"product-service/pkg/stream"
 	"product-service/pkg/utils"
@@ -132,16 +132,17 @@ func (s *OrderService) Cancel(ctx context.Context, orderID int64) error {
 			}
 			return err
 		}
-		evt := &orderpb.OrderCanceledEvent{
-			OrderId:    order.ID,
-			UserId:     order.UserID,
-			ProductId:  order.ProductID,
+		evt := event.OrderCanceledEvent{
+			OrderID:    order.ID,
+			UserID:     order.UserID,
+			ProductID:  order.ProductID,
 			Count:      int64(order.Count),
 			Reason:     "用户取消订单",
 			CanceledAt: time.Now().Unix(),
 		}
+		pbEvt := evt.ToPb()
 
-		payload, err := proto.Marshal(evt)
+		payload, err := proto.Marshal(pbEvt)
 		if err != nil {
 			return err
 		}
@@ -177,17 +178,18 @@ func (s *OrderService) CancelExpired(ctx context.Context, now time.Time, timeout
 	}
 	successCnt := int64(0)
 	for _, order := range data {
-		err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			evt := &orderpb.OrderCanceledEvent{
-				OrderId:    order.ID,
-				UserId:     order.UserID,
-				ProductId:  order.ProductID,
+		err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			evt := event.OrderCanceledEvent{
+				OrderID:    order.ID,
+				UserID:     order.UserID,
+				ProductID:  order.ProductID,
 				Count:      int64(order.Count),
 				Reason:     "超时取消订单",
 				CanceledAt: time.Now().Unix(),
 			}
+			pbEvt := evt.ToPb()
 
-			payload, err := proto.Marshal(evt)
+			payload, err := proto.Marshal(pbEvt)
 			if err != nil {
 				return err
 			}
@@ -246,14 +248,16 @@ func (s *OrderService) Pay(ctx context.Context, orderID int64) error {
 			return err
 		}
 
-		evt := &orderpb.OrderPaidEvent{
-			OrderId: order.ID,
-			UserId:  order.UserID,
+		evt := event.OrderPaidEvent{
+			OrderID: order.ID,
+			UserID:  order.UserID,
 			Amount:  order.Amount,
 			PaidAt:  time.Now().Unix(),
 		}
 
-		payload, err := proto.Marshal(evt)
+		pbEvt := evt.ToPb()
+
+		payload, err := proto.Marshal(pbEvt)
 		if err != nil {
 			return err
 		}
