@@ -2,18 +2,18 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	kafkago "github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm"
 	"os"
 	"os/signal"
 	"product-service/internal/bootstrap"
 	"product-service/pkg/db"
-	"product-service/pkg/event"
 	"product-service/pkg/kafka"
 	"product-service/pkg/logger"
+	"product-service/pkg/pb/orderpb"
 	"product-service/pkg/redis"
 	"product-service/services/order/repository"
 	orderMysql "product-service/services/order/repository/mysql"
@@ -89,8 +89,8 @@ func consumeOrderPaid(ctx context.Context, broker []string, wg *sync.WaitGroup, 
 }
 
 func handleOrderPaid(ctx context.Context, msg kafkago.Message, logRepo repository.EventConsumeLogRepository) error {
-	var evt event.OrderPaidEvent
-	err := json.Unmarshal(msg.Value, &evt)
+	evt := &orderpb.OrderPaidEvent{}
+	err := proto.Unmarshal(msg.Value, evt)
 	if err != nil {
 		logger.L().Error("解析订单支付事件失败：", zap.Error(err), zap.Any("data", evt))
 		return fmt.Errorf("反序列化订单支付事件失败: %w", err)
@@ -106,20 +106,20 @@ func handleOrderPaid(ctx context.Context, msg kafkago.Message, logRepo repositor
 	if !ok {
 		logger.L().Info("订单支付事件已处理过",
 			zap.String("event_id", eventID),
-			zap.Int64("order_id", evt.OrderID),
+			zap.Int64("order_id", evt.OrderId),
 			zap.String("group", kafka.GroupOrderPaid),
 		)
 		return nil
 	}
 
-	if err := processOrderPaid(ctx, evt); err != nil {
+	if err = processOrderPaid(ctx, evt); err != nil {
 		return fmt.Errorf("process order paid failed: %w", err)
 	}
 	return nil
 }
 
 // 订单支付事件处理
-func processOrderPaid(ctx context.Context, evt event.OrderPaidEvent) error {
+func processOrderPaid(ctx context.Context, evt *orderpb.OrderPaidEvent) error {
 	// TODO:
 	logger.L().Info("处理订单支付事件：", zap.Any("data", evt))
 	// 1. 加积分
@@ -151,13 +151,14 @@ func consumeOrderCanceled(ctx context.Context, broker []string, wg *sync.WaitGro
 }
 
 func handleOrderCanceled(ctx context.Context, msg kafkago.Message, logRepo repository.EventConsumeLogRepository) error {
-	var evt event.OrderCanceledEvent
-	if err := json.Unmarshal(msg.Value, &evt); err != nil {
+	evt := orderpb.OrderCanceledEvent{}
+	if err := proto.Unmarshal(msg.Value, &evt); err != nil {
+		logger.L().Error("解析proto订单取消事件失败：", zap.Error(err), zap.Any("data", &evt))
 		return fmt.Errorf("unmarshal order canceled event failed: %w", err)
 	}
 	logger.L().Info("收到取消订单事件",
-		zap.Int64("order_id", evt.OrderID),
-		zap.Int64("product_id", evt.ProductID),
+		zap.Int64("order_id", evt.OrderId),
+		zap.Int64("product_id", evt.ProductId),
 		zap.Int64("count", evt.Count),
 		zap.String("reason", evt.Reason),
 	)
@@ -173,18 +174,18 @@ func handleOrderCanceled(ctx context.Context, msg kafkago.Message, logRepo repos
 	if !ok {
 		logger.L().Info("订单取消事件已处理过",
 			zap.String("event_id", eventID),
-			zap.Int64("order_id", evt.OrderID),
+			zap.Int64("order_id", evt.OrderId),
 			zap.String("group", kafka.GroupOrderCanceled),
 		)
 		return nil
 	}
-	if err = productRepo.RestoreStock(ctx, evt.ProductID, evt.Count); err != nil {
+	if err = productRepo.RestoreStock(ctx, evt.ProductId, evt.Count); err != nil {
 		return fmt.Errorf("restore stock failed: %w", err)
 	}
 	logger.L().Info("订单取消事件消费成功",
 		zap.String("event_id", eventID),
-		zap.Int64("order_id", evt.OrderID),
-		zap.Int64("product_id", evt.ProductID),
+		zap.Int64("order_id", evt.OrderId),
+		zap.Int64("product_id", evt.ProductId),
 		zap.Int64("count", evt.Count),
 	)
 

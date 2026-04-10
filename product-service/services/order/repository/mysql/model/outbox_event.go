@@ -7,7 +7,7 @@ type OutboxEventModel struct {
 	ID         uint64    `gorm:"primaryKey;autoIncrement;comment:主键"`
 	EventType  string    `gorm:"type:varchar(50);not null;index:idx_event_type;comment:事件类型"`
 	BizID      int64     `gorm:"not null;default:0;index:idx_biz_id"`
-	Payload    string    `gorm:"type:text;not null;comment=kafka消息体"`
+	Payload    []byte    `gorm:"type:blob;not null;comment=kafka消息体"`
 	Status     uint8     `gorm:"type:tinyint;not null;default:0;comment:状态是否发送"`
 	RetryCount int       `gorm:"default:0;comment:重试次数"`
 	LastError  string    `gorm:"type:varchar(500);not null;default:''"`

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package order;
+
+option go_package = "product-service/pkg/pb/orderpb";
+
+message OrderPaidEvent {
+    int64 order_id = 1;
+    int64 user_id  = 2;
+    int64 amount   = 3;
+    int64 paid_at  = 4;
+}
+
+message OrderCanceledEvent {
+    int64 order_id     = 1;
+    int64 user_id      = 2;
+    int64 product_id   = 3;
+    int64 count        = 4;
+    string reason      = 5;
+    int64 canceled_at  = 6;
+}

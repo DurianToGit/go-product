@@ -64,11 +64,12 @@ func (r *OutboxRelay) publishOne(ctx context.Context, evt *orderModel.OutboxEven
 		return fmt.Errorf("kafka client is nil")
 	}
 	key := []byte(strconv.FormatInt(int64(evt.ID), 10))
+	payload := evt.Payload
 	switch evt.EventType {
 	case domain.OutboxEventTypeOrderPaid:
-		return kafka.PublishRaw(ctx, kafka.TopicOrderPaid, key, []byte(evt.Payload))
+		return kafka.PublishRaw(ctx, kafka.TopicOrderPaid, key, payload)
 	case domain.OutboxEventTypeOrderCanceled:
-		return kafka.PublishRaw(ctx, kafka.TopicOrderCanceled, key, []byte(evt.Payload))
+		return kafka.PublishRaw(ctx, kafka.TopicOrderCanceled, key, payload)
 	default:
 		return fmt.Errorf("unsupported outbox event type: %s", evt.EventType)
 	}
