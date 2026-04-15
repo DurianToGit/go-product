@@ -3,13 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"os/signal"
 	"product-service/internal/bootstrap"
-	"product-service/internal/config"
 	otelx "product-service/internal/otel"
 	"product-service/internal/registry"
 	"product-service/internal/router"
@@ -18,6 +15,9 @@ import (
 	"product-service/pkg/middleware"
 	"syscall"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -25,6 +25,7 @@ func main() {
 	defer logger.Sync()
 
 	app := bootstrap.InitApp()
+	// defer app.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -77,38 +78,43 @@ func main() {
 	}()
 
 	shutdown, err := otelx.Init("product-service")
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = shutdown(ctx)
-	}()
+	if err != nil {
+		logger.L().Error("otel_init_failed", zap.Error(err))
+	}
 
 	<-ctx.Done()
-	// 优雅关闭：关闭注册中心
-	if app.EtcdLoader != nil {
-		defer func(reg *config.EtcdLoader) {
-			err = reg.Close()
-			if err != nil {
-				logger.L().Error("[registry] Close failed.\n", zap.Error(err))
-			}
-		}(app.EtcdLoader)
+	logger.L().Info("接收到关闭信号，正在优雅关闭服务...")
+
+	// 创建关闭超时上下文
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	// 1. 关闭 HTTP 服务器
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		logger.L().Error("HTTP服务器关闭失败", zap.Error(err))
 	}
-	// 关闭kafka client
+	logger.L().Info("HTTP服务器已关闭")
+
+	// 2. 关闭 Kafka 客户端
 	if kafka.Client != nil {
-		defer func() {
-			err = kafka.Client.Close()
-			if err != nil {
-				logger.L().Error("[kafka] Close failed.\n", zap.Error(err))
-			}
-		}()
+		if err := kafka.Client.Close(); err != nil {
+			logger.L().Error("Kafka关闭失败", zap.Error(err))
+		}
+		logger.L().Info("Kafka已关闭")
 	}
 
-	logger.L().Info("Shutting down server...")
-
-	ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel2()
-	logger.L().Info("server_shutting_down")
-	if err = srv.Shutdown(ctx2); err != nil {
-		logger.L().Error("Server forced to shutdown.", zap.Error(err))
+	// 3. 关闭 OpenTelemetry
+	if shutdown != nil {
+		if err := shutdown(shutdownCtx); err != nil {
+			logger.L().Error("OpenTelemetry关闭失败", zap.Error(err))
+		}
 	}
+
+	// 4. 关闭应用资源（gRPC、MySQL、Redis、Etcd）
+	if err := app.Close(); err != nil {
+		logger.L().Error("应用资源关闭失败", zap.Error(err))
+	}
+	logger.L().Info("应用资源已关闭")
+
+	logger.L().Info("服务已优雅关闭")
 }

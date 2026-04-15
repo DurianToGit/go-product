@@ -1,28 +1,26 @@
 package db
 
 import (
-	"fmt"
+	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"log"
+	"product-service/pkg/logger"
 	"time"
 )
 
 var DB *gorm.DB
 
 func InitMySQL(dsn string) *gorm.DB {
-
-	fmt.Println(dsn)
 	var err error
 
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal("failed to connect database", err)
+		logger.L().Fatal("初始化数据库失败", zap.Error(err))
 	}
 
 	sqlDB, err := DB.DB()
 	if err != nil {
-		log.Fatal(err)
+		logger.L().Fatal("初始化数据库失败", zap.Error(err))
 	}
 	// 连接池参数（必须会解释）
 	sqlDB.SetMaxOpenConns(50)           // 连接池最大连接数

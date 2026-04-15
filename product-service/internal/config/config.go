@@ -17,11 +17,11 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Env             string
-	Addr            string
-	LogLevel        string
-	LogEncoding     string
-	ProductCacheTTL int
+	Env         string
+	Addr        string
+	LogLevel    string
+	LogEncoding string
+	Product     Product
 }
 
 type DBConfig struct {
@@ -44,6 +44,12 @@ type EtcdConfig struct {
 
 type Kafka struct {
 	Addr []string
+}
+
+type Product struct {
+	CacheTTL int
+	Grpc     bool
+	GrpcAddr string
 }
 
 var globalConfig atomic.Value
@@ -83,15 +89,24 @@ func loadFromEnv() *Config {
 		productCacheTtl = 60
 		logger.L().Warn("PRODUCT_CACHE_TTL not set, use default value 60")
 	}
+	productGrpc, err := strconv.ParseBool(os.Getenv("PRODUCT_GRPC"))
+	if err != nil {
+		productGrpc = false
+		logger.L().Warn("PRODUCT_GRPC not set, use default value false")
+	}
 	etcdAddr := getEnvAddrs("ETCD_ADDR")
 	kafkaAddrs := getEnvAddrs("KAFKA_ADDR")
 	return &Config{
 		App: AppConfig{
-			Env:             os.Getenv("ENV"),
-			Addr:            os.Getenv("ADDR"),
-			LogLevel:        os.Getenv("LOG_LEVEL"),
-			LogEncoding:     os.Getenv("LOG_ENCODING"),
-			ProductCacheTTL: productCacheTtl,
+			Env:         os.Getenv("ENV"),
+			Addr:        os.Getenv("ADDR"),
+			LogLevel:    os.Getenv("LOG_LEVEL"),
+			LogEncoding: os.Getenv("LOG_ENCODING"),
+			Product: Product{
+				CacheTTL: productCacheTtl,
+				Grpc:     productGrpc,
+				GrpcAddr: os.Getenv("PRODUCT_GRPC_ADDR"),
+			},
 		},
 		DB: DBConfig{
 			DBUser: os.Getenv("DB_USER"),

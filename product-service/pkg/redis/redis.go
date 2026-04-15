@@ -3,6 +3,8 @@ package redis
 import (
 	"context"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
+	"product-service/pkg/logger"
 	"time"
 )
 
@@ -24,7 +26,7 @@ func InitRedis(addr string, password string, db int) *redis.Client {
 	defer cancel()
 
 	if err := Client.Ping(ctx).Err(); err != nil {
-		panic(err)
+		logger.L().Fatal("redis_init_failed", zap.Error(err))
 	}
 
 	return Client

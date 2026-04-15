@@ -3,10 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"github.com/joho/godotenv"
-	redis2 "github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
-	"gorm.io/gorm"
 	"log"
 	"math/rand"
 	"product-service/internal/client/productclient"
@@ -31,6 +27,13 @@ import (
 	modelUser "product-service/services/user/repository/mysql/model"
 	serviceUser "product-service/services/user/service"
 	"time"
+
+	"github.com/joho/godotenv"
+	redis2 "github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"gorm.io/gorm"
 )
 
 type App struct {
@@ -44,6 +47,48 @@ type App struct {
 	RedisBreaker *breaker.CircuitBreaker
 
 	EtcdLoader *config.EtcdLoader
+	grpcConn   *grpc.ClientConn // 存储 gRPC 连接以便关闭
+}
+
+// Close 优雅关闭应用资源
+func (a *App) Close() error {
+	var errs []error
+
+	// 关闭 gRPC 连接
+	if a.grpcConn != nil {
+		if err := a.grpcConn.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	// 关闭 MySQL 连接
+	if a.MysqlClient != nil {
+		if sqlDB, err := a.MysqlClient.DB(); err == nil {
+			if err := sqlDB.Close(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	// 关闭 Redis 连接
+	if a.RedisClient != nil {
+		if err := a.RedisClient.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	// 关闭 EtcdLoader
+	if a.EtcdLoader != nil {
+		if err := a.EtcdLoader.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	// 返回第一个错误（如果有）
+	if len(errs) > 0 {
+		return errs[0]
+	}
+	return nil
 }
 
 func BaseInit() *config.Config {
@@ -130,7 +175,19 @@ func InitApp() *App {
 	productRepo := mysqlProduct.NewProductRepository(mySQL)
 	productService := serviceProduct.NewProductService(productRepo)
 	productHandler := handlerProduct.NewProductHandler(productService)
-	productClient := productclient.NewLocalClient(productService)
+	var productClient productclient.Client
+	var grpcConn *grpc.ClientConn
+	if cfg.App.Product.Grpc {
+		var err error
+		grpcConn, err = grpc.Dial(cfg.App.Product.GrpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			logger.L().Error("初始化 grpc client 失败", zap.Error(err))
+			return nil
+		}
+		productClient = productclient.NewGRPCClient(grpcConn)
+	} else {
+		productClient = productclient.NewLocalClient(productService)
+	}
 
 	// 初始化订单服务
 	orderRepo := mysqlOrder.NewOrderRepository(mySQL)
@@ -147,5 +204,6 @@ func InitApp() *App {
 		RedisClient:    rdb,
 		RedisBreaker:   redisBreaker,
 		EtcdLoader:     loader,
+		grpcConn:       grpcConn,
 	}
 }
