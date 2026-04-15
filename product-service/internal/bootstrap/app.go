@@ -46,13 +46,19 @@ type App struct {
 	RedisClient  *redis2.Client
 	RedisBreaker *breaker.CircuitBreaker
 
-	EtcdLoader *config.EtcdLoader
-	grpcConn   *grpc.ClientConn // 存储 gRPC 连接以便关闭
+	EtcdLoader  *config.EtcdLoader
+	grpcConn    *grpc.ClientConn   // 存储 gRPC 连接以便关闭
+	cancelWatch context.CancelFunc // 用于取消 etcd watch
 }
 
 // Close 优雅关闭应用资源
 func (a *App) Close() error {
 	var errs []error
+
+	// 取消 etcd watch
+	if a.cancelWatch != nil {
+		a.cancelWatch()
+	}
 
 	// 关闭 gRPC 连接
 	if a.grpcConn != nil {
@@ -104,8 +110,22 @@ func BaseInit() *config.Config {
 	return cfg
 }
 
-func InitApp() *App {
+func InitApp() (*App, error) {
 	cfg := BaseInit()
+
+	// 资源清理函数列表，用于初始化失败时回滚
+	var cleanup []func()
+
+	// 注册清理函数，如果后续初始化失败则执行
+	defer func() {
+		if cleanup != nil {
+			// 初始化失败，执行所有清理函数
+			for i := len(cleanup) - 1; i >= 0; i-- {
+				cleanup[i]()
+			}
+		}
+	}()
+
 	err := configwatch.Watch(".env", func() {
 		if err := godotenv.Overload(".env"); err != nil {
 			logger.L().Error("reload .env failed", zap.Error(err))
@@ -116,9 +136,34 @@ func InitApp() *App {
 	})
 	if err != nil {
 		logger.L().Error("加载环境变量失败", zap.Error(err))
-		return nil
+		return nil, err
 	}
+
+	// 初始化 gRPC 连接
+	var grpcConn *grpc.ClientConn
+	if cfg.App.Product.Grpc {
+		var grpcErr error
+		// 使用 WithBlock() 阻塞直到连接建立，WithTimeout() 设置超时
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		grpcConn, grpcErr = grpc.DialContext(ctx,
+			cfg.App.Product.GrpcAddr,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithBlock(), // 阻塞直到连接建立
+		)
+		if grpcErr != nil {
+			logger.L().Error("初始化 grpc client 失败", zap.Error(grpcErr))
+			return nil, grpcErr
+		}
+		cleanup = append(cleanup, func() {
+			if err := grpcConn.Close(); err != nil {
+				logger.L().Error("关闭 gRPC 连接失败", zap.Error(err))
+			}
+		})
+	}
+
 	// etcd 加载器
+	var cancelWatch context.CancelFunc
 	loader, err := config.NewEtcdLoader(cfg.Etcd.Endpoints)
 	logger.L().Info("初始化etcd 加载器")
 	if err != nil {
@@ -127,7 +172,6 @@ func InitApp() *App {
 	} else {
 		logger.L().Info("初始化etcd 加载器成功")
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
 		// 启动时加载
 		if err := loader.LoadOnce(ctx); err != nil {
 			log.Printf("load config failed: %v", err)
@@ -135,11 +179,21 @@ func InitApp() *App {
 		} else {
 			logger.L().Info("load config success", zap.Any("config", config.GetRuntimeConfig()))
 		}
-		ctx2, _ := context.WithCancel(context.Background())
+		cancel()
 
-		// 后台 etcd watch
+		// 后台 etcd watch - 注意：不能使用 defer cancel2()，否则函数返回时 watch 会立即停止
+		ctx2, cancel2 := context.WithCancel(context.Background())
+		cancelWatch = cancel2
 		go loader.Watch(ctx2)
+
+		cleanup = append(cleanup, func() {
+			cancelWatch()
+			if err := loader.Close(); err != nil {
+				logger.L().Error("关闭 EtcdLoader 失败", zap.Error(err))
+			}
+		})
 	}
+
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.DB.DBUser,
 		cfg.DB.DBPass,
@@ -148,9 +202,23 @@ func InitApp() *App {
 		cfg.DB.DBName,
 	)
 	mySQL := db.InitMySQL(dsn)
+	cleanup = append(cleanup, func() {
+		if sqlDB, err := mySQL.DB(); err == nil {
+			if err := sqlDB.Close(); err != nil {
+				logger.L().Error("关闭 MySQL 连接失败", zap.Error(err))
+			}
+		}
+	})
+
 	rdb := redis.InitRedis(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
+	cleanup = append(cleanup, func() {
+		if err := rdb.Close(); err != nil {
+			logger.L().Error("关闭 Redis 连接失败", zap.Error(err))
+		}
+	})
+
 	// 熔断器
-	redisBreaker := breaker.New(5, 10*time.Second) // // 连续失败 5 次, 熔断器开启 10 秒
+	redisBreaker := breaker.New(5, 10*time.Second) // 连续失败 5 次, 熔断器开启 10 秒
 	redis.SetBreaker(redisBreaker)
 	// 初始化kafka client
 	kafka.InitClient(cfg.Kafka.Addr)
@@ -169,21 +237,13 @@ func InitApp() *App {
 	userRepo := mysqlUser.NewUserRepository(mySQL)
 	userService := serviceUser.NewUserService(userRepo)
 	userHandler := handlerUser.NewUserHandler(userService)
-	// userClient := userclient.NewLocalClient(userService) // 暂未使用
 
 	// 初始化商品服务
 	productRepo := mysqlProduct.NewProductRepository(mySQL)
 	productService := serviceProduct.NewProductService(productRepo)
 	productHandler := handlerProduct.NewProductHandler(productService)
 	var productClient productclient.Client
-	var grpcConn *grpc.ClientConn
 	if cfg.App.Product.Grpc {
-		var err error
-		grpcConn, err = grpc.Dial(cfg.App.Product.GrpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			logger.L().Error("初始化 grpc client 失败", zap.Error(err))
-			return nil
-		}
 		productClient = productclient.NewGRPCClient(grpcConn)
 	} else {
 		productClient = productclient.NewLocalClient(productService)
@@ -195,6 +255,9 @@ func InitApp() *App {
 	orderService := serviceOrder.NewOrderService(orderRepo, productClient, outboxRepo, mySQL)
 	orderHandler := handlerOrder.NewOrderHandler(orderService)
 
+	// 初始化成功，清空 cleanup 列表，防止 defer 执行清理
+	cleanup = nil
+
 	return &App{
 		Config:         cfg,
 		UserHandler:    userHandler,
@@ -205,5 +268,6 @@ func InitApp() *App {
 		RedisBreaker:   redisBreaker,
 		EtcdLoader:     loader,
 		grpcConn:       grpcConn,
-	}
+		cancelWatch:    cancelWatch,
+	}, nil
 }

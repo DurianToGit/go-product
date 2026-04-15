@@ -24,8 +24,18 @@ func main() {
 	logger.InitFromEnv("product-service")
 	defer logger.Sync()
 
-	app := bootstrap.InitApp()
-	// defer app.Close()
+	app, err := bootstrap.InitApp()
+	if err != nil {
+		logger.L().Error("初始化应用失败", zap.Error(err))
+		return
+	}
+	defer func(app *bootstrap.App) {
+		err := app.Close()
+		if err != nil {
+			logger.L().Error("应用资源关闭失败", zap.Error(err))
+			return
+		}
+	}(app)
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -110,10 +120,6 @@ func main() {
 		}
 	}
 
-	// 4. 关闭应用资源（gRPC、MySQL、Redis、Etcd）
-	if err := app.Close(); err != nil {
-		logger.L().Error("应用资源关闭失败", zap.Error(err))
-	}
 	logger.L().Info("应用资源已关闭")
 
 	logger.L().Info("服务已优雅关闭")
