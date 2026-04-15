@@ -7,12 +7,14 @@ import (
 )
 
 const RequestIDKey = "x-request-id"
+const MetadataRequestIDKey = "x-request-id"
+const ContextRequestIDKey = "request_id"
 
 func WithRequestID(ctx context.Context, requestID string) context.Context {
 	if requestID == "" {
 		return ctx
 	}
-	return metadata.AppendToOutgoingContext(ctx, RequestIDKey, requestID)
+	return metadata.AppendToOutgoingContext(ctx, MetadataRequestIDKey, requestID)
 }
 
 func GetRequestID(ctx context.Context) string {
@@ -20,7 +22,7 @@ func GetRequestID(ctx context.Context) string {
 	if !ok {
 		return ""
 	}
-	values := md.Get(RequestIDKey)
+	values := md.Get(MetadataRequestIDKey)
 	if len(values) == 0 {
 		return ""
 	}

@@ -20,6 +20,13 @@ func UnaryClientLoggingInterceptor() grpc.UnaryClientInterceptor {
 	) error {
 		start := time.Now()
 
+		// 这里先尝试从 context 中取 request_id
+		// 你可以先约定一个简单方案，比如从 ctx.Value("request_id") 取
+		rid, ok := ctx.Value(ContextRequestIDKey).(string)
+		if ok && rid != "" {
+			ctx = WithRequestID(ctx, rid)
+		}
+
 		err := invoker(ctx, method, req, reply, cc, opts...)
 
 		cost := time.Since(start)
@@ -27,6 +34,7 @@ func UnaryClientLoggingInterceptor() grpc.UnaryClientInterceptor {
 		fields := []zap.Field{
 			zap.String("grpc_method", method),
 			zap.Duration("latency", cost),
+			zap.String("request_id", rid),
 		}
 
 		if err != nil {
