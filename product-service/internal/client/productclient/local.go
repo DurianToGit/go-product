@@ -21,7 +21,7 @@ func (c *LocalClient) GetProduct(ctx context.Context, productID int64) (*Product
 
 	return &Product{
 		ID:    p.ID,
-		Title: p.Name,
+		Name:  p.Name,
 		Price: p.Price,
 		Stock: p.Stock,
 	}, nil

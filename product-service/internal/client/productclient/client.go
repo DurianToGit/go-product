@@ -4,7 +4,7 @@ import "context"
 
 type Product struct {
 	ID    int64
-	Title string
+	Name  string
 	Price int64
 	Stock int64
 }

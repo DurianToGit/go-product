@@ -31,7 +31,7 @@ func (c *GRPCClient) GetProduct(ctx context.Context, productID int64) (*Product,
 
 	return &Product{
 		ID:    resp.Id,
-		Title: resp.Name,
+		Name:  resp.Name,
 		Price: resp.Price,
 		Stock: resp.Stock,
 	}, nil
