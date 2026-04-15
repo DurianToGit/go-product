@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"product-service/pkg/grpcx"
 	"syscall"
 	"time"
 
@@ -64,7 +65,12 @@ func main() {
 	if err != nil {
 		logger.L().Fatal("监听端口失败", zap.Error(err))
 	}
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			grpcx.UnaryServerRecoveryInterceptor(),
+			grpcx.UnaryServerLoggingInterceptor(),
+		),
+	)
 	productpb.RegisterProductServiceServer(grpcServer, rpcProductService)
 
 	// 优雅关闭处理

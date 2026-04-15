@@ -11,6 +11,7 @@ import (
 	"product-service/pkg/breaker"
 	"product-service/pkg/configwatch"
 	"product-service/pkg/db"
+	"product-service/pkg/grpcx"
 	"product-service/pkg/kafka"
 	"product-service/pkg/logger"
 	"product-service/pkg/redis"
@@ -146,10 +147,12 @@ func InitApp() (*App, error) {
 		// 使用 WithBlock() 阻塞直到连接建立，WithTimeout() 设置超时
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		grpcConn, grpcErr = grpc.DialContext(ctx,
+		grpcConn, grpcErr = grpc.DialContext(
+			ctx,
 			cfg.App.Product.GrpcAddr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithBlock(), // 阻塞直到连接建立
+			grpc.WithBlock(),
+			grpc.WithUnaryInterceptor(grpcx.UnaryClientLoggingInterceptor()),
 		)
 		if grpcErr != nil {
 			logger.L().Error("初始化 grpc client 失败", zap.Error(grpcErr))

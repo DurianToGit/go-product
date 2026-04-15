@@ -2,6 +2,9 @@ package grpc
 
 import (
 	"context"
+	"go.uber.org/zap"
+	"product-service/pkg/grpcx"
+	"product-service/pkg/logger"
 
 	"product-service/pkg/pb/productpb"
 	productService "product-service/services/product/service"
@@ -17,6 +20,8 @@ func NewServer(svc *productService.ProductService) *Server {
 }
 
 func (s *Server) GetProduct(ctx context.Context, req *productpb.GetProductRequest) (*productpb.GetProductResponse, error) {
+	rid := grpcx.GetRequestID(ctx)
+	logger.L().Info("grpc get product", zap.String("request_id", rid))
 	p, err := s.svc.GetProduct(ctx, req.ProductId)
 	if err != nil {
 		return nil, err
