@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"product-service/internal/client/productclient"
 	"product-service/internal/config"
+	"product-service/internal/gateway/productgateway"
 	"product-service/internal/validator"
 	"product-service/pkg/breaker"
 	"product-service/pkg/configwatch"
@@ -38,10 +39,11 @@ import (
 )
 
 type App struct {
-	Config         *config.Config
-	UserHandler    *handlerUser.UserHandler
-	ProductHandler *handlerProduct.ProductHandler
-	OrderHandler   *handlerOrder.OrderHandler
+	Config                *config.Config
+	UserHandler           *handlerUser.UserHandler
+	ProductHandler        *handlerProduct.ProductHandler
+	ProductGatewayHandler *productgateway.Handler
+	OrderHandler          *handlerOrder.OrderHandler
 
 	MysqlClient  *gorm.DB
 	RedisClient  *redis2.Client
@@ -251,6 +253,7 @@ func InitApp() (*App, error) {
 	} else {
 		productClient = productclient.NewLocalClient(productService)
 	}
+	productGatewayHandler := productgateway.NewHandler(productClient)
 
 	// 初始化订单服务
 	orderRepo := mysqlOrder.NewOrderRepository(mySQL)
@@ -262,15 +265,16 @@ func InitApp() (*App, error) {
 	cleanup = nil
 
 	return &App{
-		Config:         cfg,
-		UserHandler:    userHandler,
-		ProductHandler: productHandler,
-		OrderHandler:   orderHandler,
-		MysqlClient:    mySQL,
-		RedisClient:    rdb,
-		RedisBreaker:   redisBreaker,
-		EtcdLoader:     loader,
-		grpcConn:       grpcConn,
-		cancelWatch:    cancelWatch,
+		Config:                cfg,
+		UserHandler:           userHandler,
+		ProductHandler:        productHandler,
+		ProductGatewayHandler: productGatewayHandler,
+		OrderHandler:          orderHandler,
+		MysqlClient:           mySQL,
+		RedisClient:           rdb,
+		RedisBreaker:          redisBreaker,
+		EtcdLoader:            loader,
+		grpcConn:              grpcConn,
+		cancelWatch:           cancelWatch,
 	}, nil
 }
