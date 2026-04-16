@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ProductService_GetProduct_FullMethodName = "/product.ProductService/GetProduct"
-	ProductService_GetStock_FullMethodName   = "/product.ProductService/GetStock"
+	ProductService_GetProduct_FullMethodName        = "/product.ProductService/GetProduct"
+	ProductService_GetStock_FullMethodName          = "/product.ProductService/GetStock"
+	ProductService_WatchProductStock_FullMethodName = "/product.ProductService/WatchProductStock"
 )
 
 // ProductServiceClient is the client API for ProductService service.
@@ -29,6 +30,7 @@ const (
 type ProductServiceClient interface {
 	GetProduct(ctx context.Context, in *GetProductRequest, opts ...grpc.CallOption) (*GetProductResponse, error)
 	GetStock(ctx context.Context, in *GetStockRequest, opts ...grpc.CallOption) (*GetStockResponse, error)
+	WatchProductStock(ctx context.Context, in *WatchProductStockRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchProductStockResponse], error)
 }
 
 type productServiceClient struct {
@@ -59,12 +61,32 @@ func (c *productServiceClient) GetStock(ctx context.Context, in *GetStockRequest
 	return out, nil
 }
 
+func (c *productServiceClient) WatchProductStock(ctx context.Context, in *WatchProductStockRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchProductStockResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ProductService_ServiceDesc.Streams[0], ProductService_WatchProductStock_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[WatchProductStockRequest, WatchProductStockResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ProductService_WatchProductStockClient = grpc.ServerStreamingClient[WatchProductStockResponse]
+
 // ProductServiceServer is the server API for ProductService service.
 // All implementations must embed UnimplementedProductServiceServer
 // for forward compatibility.
 type ProductServiceServer interface {
 	GetProduct(context.Context, *GetProductRequest) (*GetProductResponse, error)
 	GetStock(context.Context, *GetStockRequest) (*GetStockResponse, error)
+	WatchProductStock(*WatchProductStockRequest, grpc.ServerStreamingServer[WatchProductStockResponse]) error
 	mustEmbedUnimplementedProductServiceServer()
 }
 
@@ -80,6 +102,9 @@ func (UnimplementedProductServiceServer) GetProduct(context.Context, *GetProduct
 }
 func (UnimplementedProductServiceServer) GetStock(context.Context, *GetStockRequest) (*GetStockResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetStock not implemented")
+}
+func (UnimplementedProductServiceServer) WatchProductStock(*WatchProductStockRequest, grpc.ServerStreamingServer[WatchProductStockResponse]) error {
+	return status.Error(codes.Unimplemented, "method WatchProductStock not implemented")
 }
 func (UnimplementedProductServiceServer) mustEmbedUnimplementedProductServiceServer() {}
 func (UnimplementedProductServiceServer) testEmbeddedByValue()                        {}
@@ -138,6 +163,17 @@ func _ProductService_GetStock_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProductService_WatchProductStock_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(WatchProductStockRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ProductServiceServer).WatchProductStock(m, &grpc.GenericServerStream[WatchProductStockRequest, WatchProductStockResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ProductService_WatchProductStockServer = grpc.ServerStreamingServer[WatchProductStockResponse]
+
 // ProductService_ServiceDesc is the grpc.ServiceDesc for ProductService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -154,6 +190,12 @@ var ProductService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ProductService_GetStock_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "WatchProductStock",
+			Handler:       _ProductService_WatchProductStock_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "proto/product.proto",
 }

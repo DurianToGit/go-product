@@ -9,6 +9,9 @@ import (
 	"syscall"
 	"time"
 
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+
 	"product-service/internal/bootstrap"
 	"product-service/internal/config"
 	"product-service/pkg/breaker"
@@ -71,8 +74,16 @@ func main() {
 			grpcx.UnaryServerMetadataInterceptor(),
 			grpcx.UnaryServerLoggingInterceptor(),
 		),
+		grpc.ChainStreamInterceptor(
+			grpcx.StreamServerMetadataInterceptor(),
+			grpcx.StreamServerLoggingInterceptor(),
+		),
 	)
 	productpb.RegisterProductServiceServer(grpcServer, rpcProductService)
+
+	hs := health.NewServer()
+	healthpb.RegisterHealthServer(grpcServer, hs)
+	hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 
 	// 优雅关闭处理
 	go func() {

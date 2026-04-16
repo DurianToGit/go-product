@@ -221,6 +221,110 @@ func (x *GetStockResponse) GetStock() int64 {
 	return 0
 }
 
+type WatchProductStockRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProductId     int64                  `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WatchProductStockRequest) Reset() {
+	*x = WatchProductStockRequest{}
+	mi := &file_proto_product_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WatchProductStockRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WatchProductStockRequest) ProtoMessage() {}
+
+func (x *WatchProductStockRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_product_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WatchProductStockRequest.ProtoReflect.Descriptor instead.
+func (*WatchProductStockRequest) Descriptor() ([]byte, []int) {
+	return file_proto_product_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *WatchProductStockRequest) GetProductId() int64 {
+	if x != nil {
+		return x.ProductId
+	}
+	return 0
+}
+
+type WatchProductStockResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProductId     int64                  `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	Stock         int64                  `protobuf:"varint,2,opt,name=stock,proto3" json:"stock,omitempty"`
+	Seq           int64                  `protobuf:"varint,3,opt,name=seq,proto3" json:"seq,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WatchProductStockResponse) Reset() {
+	*x = WatchProductStockResponse{}
+	mi := &file_proto_product_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WatchProductStockResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WatchProductStockResponse) ProtoMessage() {}
+
+func (x *WatchProductStockResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_product_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WatchProductStockResponse.ProtoReflect.Descriptor instead.
+func (*WatchProductStockResponse) Descriptor() ([]byte, []int) {
+	return file_proto_product_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *WatchProductStockResponse) GetProductId() int64 {
+	if x != nil {
+		return x.ProductId
+	}
+	return 0
+}
+
+func (x *WatchProductStockResponse) GetStock() int64 {
+	if x != nil {
+		return x.Stock
+	}
+	return 0
+}
+
+func (x *WatchProductStockResponse) GetSeq() int64 {
+	if x != nil {
+		return x.Seq
+	}
+	return 0
+}
+
 var File_proto_product_proto protoreflect.FileDescriptor
 
 const file_proto_product_proto_rawDesc = "" +
@@ -238,11 +342,20 @@ const file_proto_product_proto_rawDesc = "" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x03R\tproductId\"(\n" +
 	"\x10GetStockResponse\x12\x14\n" +
-	"\x05stock\x18\x01 \x01(\x03R\x05stock2\x98\x01\n" +
+	"\x05stock\x18\x01 \x01(\x03R\x05stock\"9\n" +
+	"\x18WatchProductStockRequest\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x01 \x01(\x03R\tproductId\"b\n" +
+	"\x19WatchProductStockResponse\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x01 \x01(\x03R\tproductId\x12\x14\n" +
+	"\x05stock\x18\x02 \x01(\x03R\x05stock\x12\x10\n" +
+	"\x03seq\x18\x03 \x01(\x03R\x03seq2\xf6\x01\n" +
 	"\x0eProductService\x12E\n" +
 	"\n" +
 	"GetProduct\x12\x1a.product.GetProductRequest\x1a\x1b.product.GetProductResponse\x12?\n" +
-	"\bGetStock\x12\x18.product.GetStockRequest\x1a\x19.product.GetStockResponseB\"Z product-service/pkg/pb/productpbb\x06proto3"
+	"\bGetStock\x12\x18.product.GetStockRequest\x1a\x19.product.GetStockResponse\x12\\\n" +
+	"\x11WatchProductStock\x12!.product.WatchProductStockRequest\x1a\".product.WatchProductStockResponse0\x01B\"Z product-service/pkg/pb/productpbb\x06proto3"
 
 var (
 	file_proto_product_proto_rawDescOnce sync.Once
@@ -256,20 +369,24 @@ func file_proto_product_proto_rawDescGZIP() []byte {
 	return file_proto_product_proto_rawDescData
 }
 
-var file_proto_product_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_proto_product_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_proto_product_proto_goTypes = []any{
-	(*GetProductRequest)(nil),  // 0: product.GetProductRequest
-	(*GetProductResponse)(nil), // 1: product.GetProductResponse
-	(*GetStockRequest)(nil),    // 2: product.GetStockRequest
-	(*GetStockResponse)(nil),   // 3: product.GetStockResponse
+	(*GetProductRequest)(nil),         // 0: product.GetProductRequest
+	(*GetProductResponse)(nil),        // 1: product.GetProductResponse
+	(*GetStockRequest)(nil),           // 2: product.GetStockRequest
+	(*GetStockResponse)(nil),          // 3: product.GetStockResponse
+	(*WatchProductStockRequest)(nil),  // 4: product.WatchProductStockRequest
+	(*WatchProductStockResponse)(nil), // 5: product.WatchProductStockResponse
 }
 var file_proto_product_proto_depIdxs = []int32{
 	0, // 0: product.ProductService.GetProduct:input_type -> product.GetProductRequest
 	2, // 1: product.ProductService.GetStock:input_type -> product.GetStockRequest
-	1, // 2: product.ProductService.GetProduct:output_type -> product.GetProductResponse
-	3, // 3: product.ProductService.GetStock:output_type -> product.GetStockResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
+	4, // 2: product.ProductService.WatchProductStock:input_type -> product.WatchProductStockRequest
+	1, // 3: product.ProductService.GetProduct:output_type -> product.GetProductResponse
+	3, // 4: product.ProductService.GetStock:output_type -> product.GetStockResponse
+	5, // 5: product.ProductService.WatchProductStock:output_type -> product.WatchProductStockResponse
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -286,7 +403,7 @@ func file_proto_product_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_product_proto_rawDesc), len(file_proto_product_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -7,6 +7,7 @@ option go_package = "product-service/pkg/pb/productpb";
 service ProductService {
     rpc GetProduct(GetProductRequest) returns (GetProductResponse);
     rpc GetStock(GetStockRequest) returns (GetStockResponse);
+    rpc WatchProductStock(WatchProductStockRequest) returns (stream WatchProductStockResponse);
 }
 
 message GetProductRequest {
@@ -26,4 +27,15 @@ message GetStockRequest {
 
 message GetStockResponse {
     int64 stock = 1;
+}
+
+
+message WatchProductStockRequest {
+    int64 product_id = 1;
+}
+
+message WatchProductStockResponse {
+    int64 product_id = 1;
+    int64 stock = 2;
+    int64 seq = 3;
 }

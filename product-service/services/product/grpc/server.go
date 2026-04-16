@@ -2,9 +2,12 @@ package grpc
 
 import (
 	"context"
-	"go.uber.org/zap"
+	"time"
+
 	"product-service/pkg/grpcx"
 	"product-service/pkg/logger"
+
+	"go.uber.org/zap"
 
 	"product-service/pkg/pb/productpb"
 	productService "product-service/services/product/service"
@@ -42,4 +45,53 @@ func (s *Server) GetStock(ctx context.Context, req *productpb.GetStockRequest) (
 	return &productpb.GetStockResponse{
 		Stock: stock,
 	}, nil
+}
+
+func (s *Server) WatchProductStock(req *productpb.WatchProductStockRequest, stream productpb.ProductService_WatchProductStockServer) error {
+	// 不要先搞复杂 watch 机制，先做最小版：
+	//
+	// 从 req.ProductId 取商品 ID
+	// 循环 5 次
+	// 每次：
+	// 查一次 s.svc.GetStock(...)
+	// stream.Send(...)
+	// time.Sleep(1 * time.Second)
+	// 如果 stream.Context().Done() 了，立刻结束
+	productID := req.ProductId
+	ctx := stream.Context()
+
+	rid := grpcx.GetRequestIDFromContext(ctx)
+	logger.L().Info("Watch 产品库存",
+		zap.Int64("product_id", productID),
+		zap.String("request_id", rid),
+	)
+
+	for i := 0; i < 5; i++ {
+		// 检查客户端是否已断开
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		// 查询库存
+		stock, err := s.svc.GetStock(ctx, productID)
+		if err != nil {
+			return err
+		}
+
+		// 发送响应
+		resp := &productpb.WatchProductStockResponse{
+			ProductId: productID,
+			Stock:     stock,
+		}
+		if err := stream.Send(resp); err != nil {
+			return err
+		}
+
+		// 等待 1 秒
+		time.Sleep(1 * time.Second)
+	}
+
+	return nil
 }
