@@ -67,30 +67,27 @@ func (s *Server) WatchProductStock(req *productpb.WatchProductStockRequest, stre
 	)
 
 	for i := 0; i < 5; i++ {
-		// 检查客户端是否已断开
+		// 检查客户端是否已断开或等待 1 秒
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		default:
-		}
+		case <-time.After(1 * time.Second):
+			// 查询库存
+			stock, err := s.svc.GetStock(ctx, productID)
+			if err != nil {
+				return err
+			}
 
-		// 查询库存
-		stock, err := s.svc.GetStock(ctx, productID)
-		if err != nil {
-			return err
+			// 发送响应
+			resp := &productpb.WatchProductStockResponse{
+				ProductId: productID,
+				Stock:     stock,
+				Seq:       int64(i + 1),
+			}
+			if err = stream.Send(resp); err != nil {
+				return err
+			}
 		}
-
-		// 发送响应
-		resp := &productpb.WatchProductStockResponse{
-			ProductId: productID,
-			Stock:     stock,
-		}
-		if err := stream.Send(resp); err != nil {
-			return err
-		}
-
-		// 等待 1 秒
-		time.Sleep(1 * time.Second)
 	}
 
 	return nil

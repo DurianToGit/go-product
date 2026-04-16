@@ -75,6 +75,7 @@ func main() {
 			grpcx.UnaryServerLoggingInterceptor(),
 		),
 		grpc.ChainStreamInterceptor(
+			grpcx.StreamServerRecoveryInterceptor(),
 			grpcx.StreamServerMetadataInterceptor(),
 			grpcx.StreamServerLoggingInterceptor(),
 		),

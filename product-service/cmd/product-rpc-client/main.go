@@ -85,7 +85,12 @@ func main() {
 		if err != nil {
 			logger.L().Fatal("接收消息失败", zap.Error(err))
 		}
-		logger.L().Info("接收消息成功", zap.Int("index", i+1), zap.Int64("product_id", resp.GetProductId()), zap.Int64("stock", resp.GetStock()))
+		logger.L().Info("接收消息成功",
+			zap.Int("index", i+1),
+			zap.Int64("product_id", resp.GetProductId()),
+			zap.Int64("stock", resp.GetStock()),
+			zap.Int64("seq", resp.GetSeq()),
+		)
 	}
 
 	logger.L().Info("完成!")
