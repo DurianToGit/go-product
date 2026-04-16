@@ -1,8 +1,10 @@
 package middleware
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"product-service/pkg/grpcx"
 )
 
 const (
@@ -18,6 +20,8 @@ func RequestID() gin.HandlerFunc {
 		}
 		c.Set(ctxRequestIDKey, rid)
 		c.Writer.Header().Set(headerRequestID, rid)
+		ctx := context.WithValue(c.Request.Context(), grpcx.ContextRequestIDKey, rid)
+		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
 }

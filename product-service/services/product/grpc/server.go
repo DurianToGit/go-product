@@ -20,7 +20,7 @@ func NewServer(svc *productService.ProductService) *Server {
 }
 
 func (s *Server) GetProduct(ctx context.Context, req *productpb.GetProductRequest) (*productpb.GetProductResponse, error) {
-	rid := grpcx.GetRequestID(ctx)
+	rid := grpcx.GetRequestIDFromContext(ctx)
 	logger.L().Info("grpc get product", zap.String("request_id", rid))
 	p, err := s.svc.GetProduct(ctx, req.ProductId)
 	if err != nil {

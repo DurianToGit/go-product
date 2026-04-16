@@ -6,7 +6,6 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-const RequestIDKey = "x-request-id"
 const MetadataRequestIDKey = "x-request-id"
 const ContextRequestIDKey = "request_id"
 
@@ -27,4 +26,11 @@ func GetRequestID(ctx context.Context) string {
 		return ""
 	}
 	return values[0]
+}
+
+func GetRequestIDFromContext(ctx context.Context) string {
+	if v, ok := ctx.Value(ContextRequestIDKey).(string); ok {
+		return v
+	}
+	return ""
 }
