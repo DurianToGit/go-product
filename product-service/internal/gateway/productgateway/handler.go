@@ -27,7 +27,7 @@ func (h *Handler) GetProduct(c *gin.Context) {
 		response.ErrorWithErrno(c, errno.InvalidParams)
 		return
 	}
-	logger.L().Info("gateway get product", zap.Int64("product_id", productID), zap.String("request_id", grpcx.GetRequestIDFromContext(c)))
+	logger.L().Info("gateway get product", zap.Int64("product_id", productID), zap.String("request_id", grpcx.GetRequestIDFromContext(c.Request.Context())))
 
 	p, err := h.client.GetProduct(c.Request.Context(), productID)
 	if err != nil {
