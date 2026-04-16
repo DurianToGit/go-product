@@ -248,12 +248,13 @@ func InitApp() (*App, error) {
 	productService := serviceProduct.NewProductService(productRepo)
 	productHandler := handlerProduct.NewProductHandler(productService)
 	var productClient productclient.Client
+	var productGatewayHandler *productgateway.Handler
 	if cfg.App.Product.Grpc {
 		productClient = productclient.NewGRPCClient(grpcConn)
+		productGatewayHandler = productgateway.NewHandler(productClient)
 	} else {
 		productClient = productclient.NewLocalClient(productService)
 	}
-	productGatewayHandler := productgateway.NewHandler(productClient)
 
 	// 初始化订单服务
 	orderRepo := mysqlOrder.NewOrderRepository(mySQL)
