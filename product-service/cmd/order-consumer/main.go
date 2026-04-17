@@ -5,20 +5,23 @@ import (
 	"fmt"
 	kafkago "github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm"
 	"os"
 	"os/signal"
 	"product-service/internal/bootstrap"
+	"product-service/internal/client/productclient"
 	"product-service/pkg/db"
 	"product-service/pkg/event"
+	"product-service/pkg/grpcx"
 	"product-service/pkg/kafka"
 	"product-service/pkg/logger"
 	"product-service/pkg/pb/orderpb"
 	"product-service/pkg/redis"
 	"product-service/services/order/repository"
 	orderMysql "product-service/services/order/repository/mysql"
-	"product-service/services/product/repository/mysql"
 	"sync"
 	"syscall"
 )
@@ -26,7 +29,7 @@ import (
 // 订单消费者 使用 kafka
 
 var mySQL *gorm.DB
-var productRepo *mysql.ProductRepository
+var productClient productclient.Client
 
 func main() {
 	cfg := bootstrap.BaseInit()
@@ -45,7 +48,25 @@ func main() {
 	mySQL = db.InitMySQL(dsn)
 	_ = redis.InitRedis(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
 
-	productRepo = mysql.NewProductRepository(mySQL)
+	// 连接到 gRPC 服务端
+	conn, err := grpc.Dial(
+		cfg.App.Product.GrpcAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(grpcx.UnaryClientLoggingInterceptor()),
+		grpc.WithStreamInterceptor(grpcx.StreamClientLoggingInterceptor()),
+	)
+	if err != nil {
+		logger.L().Fatal("连接 gRPC 服务失败", zap.Error(err))
+	}
+	defer func(conn *grpc.ClientConn) {
+		err = conn.Close()
+		if err != nil {
+			logger.L().Error("关闭 gRPC 连接失败", zap.Error(err))
+		}
+	}(conn)
+
+	productClient = productclient.NewGRPCClient(conn)
+	// productRepo = mysql.NewProductRepository(mySQL)
 	consumerLogRepo := orderMysql.NewEventConsumeLogRepository(mySQL)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -192,7 +213,7 @@ func handleOrderCanceled(ctx context.Context, msg kafkago.Message, logRepo repos
 		)
 		return nil
 	}
-	if err = productRepo.RestoreStock(ctx, evt.ProductID, evt.Count); err != nil {
+	if err = productClient.RestoreStock(ctx, evt.ProductID, evt.Count, "cancel_order"); err != nil {
 		return fmt.Errorf("restore stock failed: %w", err)
 	}
 	logger.L().Info("订单取消事件消费成功",

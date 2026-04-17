@@ -2,6 +2,7 @@ package productclient
 
 import (
 	"context"
+	"product-service/internal/errno"
 	"time"
 
 	"google.golang.org/grpc"
@@ -48,4 +49,61 @@ func (c *GRPCClient) GetStock(ctx context.Context, productID int64) (int64, erro
 		return 0, err
 	}
 	return resp.Stock, nil
+}
+
+func (r *GRPCClient) RestoreStock(ctx context.Context, productID int64, count int64, source string) error {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	resp, err := r.client.RestoreStock(ctx, &productpb.RestoreStockRequest{
+		ProductId: productID,
+		Count:     count,
+		Source:    source,
+	})
+	if err != nil {
+		return err
+	}
+	if !resp.Success {
+		return errno.ProductErrRestoreStockFailed
+	}
+
+	return nil
+}
+
+func (c *GRPCClient) ConsumeStockDeductEvent(ctx context.Context, stream, msgID string, productID int64, count int64, event_type string) error {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	resp, err := c.client.ConsumeStockDeductEvent(ctx, &productpb.ConsumeStockDeductEventRequest{
+		Stream:    stream,
+		MsgId:     msgID,
+		ProductId: productID,
+		Count:     count,
+		EventType: event_type,
+	})
+	if err != nil {
+		return err
+	}
+	if !resp.Success {
+		return errno.ProductErrConsumeRestockDeductEventFailed
+	}
+	return nil
+}
+
+func (c *GRPCClient) ConsumeRestockDeductEvent(ctx context.Context, stream, msgID string, productID int64, count int64, event_type string) error {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	resp, err := c.client.ConsumeRestockDeductEvent(ctx, &productpb.ConsumeStockDeductEventRequest{
+		Stream:    stream,
+		MsgId:     msgID,
+		ProductId: productID,
+		Count:     count,
+		EventType: event_type,
+	})
+	if err != nil {
+		return err
+	}
+	if !resp.Success {
+		return errno.ProductErrConsumeRestockDeductEventFailed
+	}
+	return nil
 }

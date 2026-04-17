@@ -111,3 +111,18 @@ func (s *ProductService) DeductStockSeckill(ctx context.Context, productId int64
 		return remain, nil
 	}
 }
+
+func (s *ProductService) RestoreStock(ctx context.Context, productId int64, count int64, source string) error {
+	logger.L().Info("恢复库存", zap.Int64("product_id", productId), zap.Int64("count", count), zap.String("source", source))
+	return s.repo.RestoreStock(ctx, productId, count)
+}
+
+func (s *ProductService) ConsumeStockDeductEvent(ctx context.Context, stream, msgID string, productID, count int64, eventType string) error {
+	logger.L().Info("消费库存扣减事件", zap.Int64("product_id", productID), zap.Int64("count", count), zap.String("event_type", eventType))
+	return s.repo.ConsumeStockDeductEvent(ctx, stream, msgID, productID, count, eventType)
+}
+
+func (s *ProductService) ConsumeRestockDeductEvent(ctx context.Context, stream, msgID string, productID, count int64, eventType string) error {
+	logger.L().Info("消费恢复库存事件", zap.Int64("product_id", productID), zap.Int64("count", count), zap.String("event_type", eventType))
+	return s.repo.ConsumeRestockDeductEvent(ctx, stream, msgID, productID, count, eventType)
+}

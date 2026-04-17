@@ -8,6 +8,9 @@ service ProductService {
     rpc GetProduct(GetProductRequest) returns (GetProductResponse);
     rpc GetStock(GetStockRequest) returns (GetStockResponse);
     rpc WatchProductStock(WatchProductStockRequest) returns (stream WatchProductStockResponse);
+    rpc RestoreStock(RestoreStockRequest) returns (RestoreStockResponse);
+    rpc ConsumeStockDeductEvent(ConsumeStockDeductEventRequest) returns (ConsumeStockDeductEventResponse);
+    rpc ConsumeRestockDeductEvent(ConsumeStockDeductEventRequest) returns (ConsumeStockDeductEventResponse);
 }
 
 message GetProductRequest {
@@ -38,4 +41,26 @@ message WatchProductStockResponse {
     int64 product_id = 1;
     int64 stock = 2;
     int64 seq = 3;
+}
+
+message RestoreStockRequest {
+    int64 product_id = 1;
+    int64 count = 2;
+    string source = 3;
+}
+
+message RestoreStockResponse {
+    bool success = 1;
+}
+
+message ConsumeStockDeductEventRequest {
+    string stream = 1;
+    string msg_id = 2;
+    int64 product_id = 3;
+    int64 count = 4;
+    string event_type = 5;
+}
+
+message ConsumeStockDeductEventResponse {
+    bool success = 1;
 }

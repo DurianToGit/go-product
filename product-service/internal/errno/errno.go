@@ -34,6 +34,10 @@ var (
 	ProductErrSeckillStockNotInit = &Error{Code: 40106, Msg: "秒杀库存未初始化"}
 	// 秒杀库存不足
 	ProductErrSeckillStockNotEnough = &Error{Code: 40107, Msg: "秒杀库存不足"}
+	// 恢复库存失败
+	ProductErrRestoreStockFailed              = &Error{Code: 40108, Msg: "恢复库存失败"}
+	ProductErrConsumeStockDeductEventFailed   = &Error{Code: 40109, Msg: "消费库存扣减事件失败"}
+	ProductErrConsumeRestockDeductEventFailed = &Error{Code: 40110, Msg: "消费恢复库存扣减事件失败"}
 
 	UsernameAlreadyExist     = &Error{Code: 40201, Msg: "Username Already Exist"}
 	UsernameNotFound         = &Error{Code: 40202, Msg: "Username Not Found"}

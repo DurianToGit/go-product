@@ -325,6 +325,230 @@ func (x *WatchProductStockResponse) GetSeq() int64 {
 	return 0
 }
 
+type RestoreStockRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProductId     int64                  `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	Count         int64                  `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	Source        string                 `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RestoreStockRequest) Reset() {
+	*x = RestoreStockRequest{}
+	mi := &file_proto_product_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestoreStockRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestoreStockRequest) ProtoMessage() {}
+
+func (x *RestoreStockRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_product_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestoreStockRequest.ProtoReflect.Descriptor instead.
+func (*RestoreStockRequest) Descriptor() ([]byte, []int) {
+	return file_proto_product_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *RestoreStockRequest) GetProductId() int64 {
+	if x != nil {
+		return x.ProductId
+	}
+	return 0
+}
+
+func (x *RestoreStockRequest) GetCount() int64 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *RestoreStockRequest) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+type RestoreStockResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RestoreStockResponse) Reset() {
+	*x = RestoreStockResponse{}
+	mi := &file_proto_product_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestoreStockResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestoreStockResponse) ProtoMessage() {}
+
+func (x *RestoreStockResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_product_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestoreStockResponse.ProtoReflect.Descriptor instead.
+func (*RestoreStockResponse) Descriptor() ([]byte, []int) {
+	return file_proto_product_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *RestoreStockResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+type ConsumeStockDeductEventRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Stream        string                 `protobuf:"bytes,1,opt,name=stream,proto3" json:"stream,omitempty"`
+	MsgId         string                 `protobuf:"bytes,2,opt,name=msg_id,json=msgId,proto3" json:"msg_id,omitempty"`
+	ProductId     int64                  `protobuf:"varint,3,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	Count         int64                  `protobuf:"varint,4,opt,name=count,proto3" json:"count,omitempty"`
+	EventType     string                 `protobuf:"bytes,5,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConsumeStockDeductEventRequest) Reset() {
+	*x = ConsumeStockDeductEventRequest{}
+	mi := &file_proto_product_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConsumeStockDeductEventRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConsumeStockDeductEventRequest) ProtoMessage() {}
+
+func (x *ConsumeStockDeductEventRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_product_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConsumeStockDeductEventRequest.ProtoReflect.Descriptor instead.
+func (*ConsumeStockDeductEventRequest) Descriptor() ([]byte, []int) {
+	return file_proto_product_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ConsumeStockDeductEventRequest) GetStream() string {
+	if x != nil {
+		return x.Stream
+	}
+	return ""
+}
+
+func (x *ConsumeStockDeductEventRequest) GetMsgId() string {
+	if x != nil {
+		return x.MsgId
+	}
+	return ""
+}
+
+func (x *ConsumeStockDeductEventRequest) GetProductId() int64 {
+	if x != nil {
+		return x.ProductId
+	}
+	return 0
+}
+
+func (x *ConsumeStockDeductEventRequest) GetCount() int64 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *ConsumeStockDeductEventRequest) GetEventType() string {
+	if x != nil {
+		return x.EventType
+	}
+	return ""
+}
+
+type ConsumeStockDeductEventResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConsumeStockDeductEventResponse) Reset() {
+	*x = ConsumeStockDeductEventResponse{}
+	mi := &file_proto_product_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConsumeStockDeductEventResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConsumeStockDeductEventResponse) ProtoMessage() {}
+
+func (x *ConsumeStockDeductEventResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_product_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConsumeStockDeductEventResponse.ProtoReflect.Descriptor instead.
+func (*ConsumeStockDeductEventResponse) Descriptor() ([]byte, []int) {
+	return file_proto_product_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ConsumeStockDeductEventResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
 var File_proto_product_proto protoreflect.FileDescriptor
 
 const file_proto_product_proto_rawDesc = "" +
@@ -350,12 +574,32 @@ const file_proto_product_proto_rawDesc = "" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x03R\tproductId\x12\x14\n" +
 	"\x05stock\x18\x02 \x01(\x03R\x05stock\x12\x10\n" +
-	"\x03seq\x18\x03 \x01(\x03R\x03seq2\xf6\x01\n" +
+	"\x03seq\x18\x03 \x01(\x03R\x03seq\"b\n" +
+	"\x13RestoreStockRequest\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x01 \x01(\x03R\tproductId\x12\x14\n" +
+	"\x05count\x18\x02 \x01(\x03R\x05count\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source\"0\n" +
+	"\x14RestoreStockResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xa3\x01\n" +
+	"\x1eConsumeStockDeductEventRequest\x12\x16\n" +
+	"\x06stream\x18\x01 \x01(\tR\x06stream\x12\x15\n" +
+	"\x06msg_id\x18\x02 \x01(\tR\x05msgId\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x03 \x01(\x03R\tproductId\x12\x14\n" +
+	"\x05count\x18\x04 \x01(\x03R\x05count\x12\x1d\n" +
+	"\n" +
+	"event_type\x18\x05 \x01(\tR\teventType\";\n" +
+	"\x1fConsumeStockDeductEventResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess2\xa1\x04\n" +
 	"\x0eProductService\x12E\n" +
 	"\n" +
 	"GetProduct\x12\x1a.product.GetProductRequest\x1a\x1b.product.GetProductResponse\x12?\n" +
 	"\bGetStock\x12\x18.product.GetStockRequest\x1a\x19.product.GetStockResponse\x12\\\n" +
-	"\x11WatchProductStock\x12!.product.WatchProductStockRequest\x1a\".product.WatchProductStockResponse0\x01B\"Z product-service/pkg/pb/productpbb\x06proto3"
+	"\x11WatchProductStock\x12!.product.WatchProductStockRequest\x1a\".product.WatchProductStockResponse0\x01\x12K\n" +
+	"\fRestoreStock\x12\x1c.product.RestoreStockRequest\x1a\x1d.product.RestoreStockResponse\x12l\n" +
+	"\x17ConsumeStockDeductEvent\x12'.product.ConsumeStockDeductEventRequest\x1a(.product.ConsumeStockDeductEventResponse\x12n\n" +
+	"\x19ConsumeRestockDeductEvent\x12'.product.ConsumeStockDeductEventRequest\x1a(.product.ConsumeStockDeductEventResponseB\"Z product-service/pkg/pb/productpbb\x06proto3"
 
 var (
 	file_proto_product_proto_rawDescOnce sync.Once
@@ -369,24 +613,34 @@ func file_proto_product_proto_rawDescGZIP() []byte {
 	return file_proto_product_proto_rawDescData
 }
 
-var file_proto_product_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_proto_product_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_proto_product_proto_goTypes = []any{
-	(*GetProductRequest)(nil),         // 0: product.GetProductRequest
-	(*GetProductResponse)(nil),        // 1: product.GetProductResponse
-	(*GetStockRequest)(nil),           // 2: product.GetStockRequest
-	(*GetStockResponse)(nil),          // 3: product.GetStockResponse
-	(*WatchProductStockRequest)(nil),  // 4: product.WatchProductStockRequest
-	(*WatchProductStockResponse)(nil), // 5: product.WatchProductStockResponse
+	(*GetProductRequest)(nil),               // 0: product.GetProductRequest
+	(*GetProductResponse)(nil),              // 1: product.GetProductResponse
+	(*GetStockRequest)(nil),                 // 2: product.GetStockRequest
+	(*GetStockResponse)(nil),                // 3: product.GetStockResponse
+	(*WatchProductStockRequest)(nil),        // 4: product.WatchProductStockRequest
+	(*WatchProductStockResponse)(nil),       // 5: product.WatchProductStockResponse
+	(*RestoreStockRequest)(nil),             // 6: product.RestoreStockRequest
+	(*RestoreStockResponse)(nil),            // 7: product.RestoreStockResponse
+	(*ConsumeStockDeductEventRequest)(nil),  // 8: product.ConsumeStockDeductEventRequest
+	(*ConsumeStockDeductEventResponse)(nil), // 9: product.ConsumeStockDeductEventResponse
 }
 var file_proto_product_proto_depIdxs = []int32{
 	0, // 0: product.ProductService.GetProduct:input_type -> product.GetProductRequest
 	2, // 1: product.ProductService.GetStock:input_type -> product.GetStockRequest
 	4, // 2: product.ProductService.WatchProductStock:input_type -> product.WatchProductStockRequest
-	1, // 3: product.ProductService.GetProduct:output_type -> product.GetProductResponse
-	3, // 4: product.ProductService.GetStock:output_type -> product.GetStockResponse
-	5, // 5: product.ProductService.WatchProductStock:output_type -> product.WatchProductStockResponse
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
+	6, // 3: product.ProductService.RestoreStock:input_type -> product.RestoreStockRequest
+	8, // 4: product.ProductService.ConsumeStockDeductEvent:input_type -> product.ConsumeStockDeductEventRequest
+	8, // 5: product.ProductService.ConsumeRestockDeductEvent:input_type -> product.ConsumeStockDeductEventRequest
+	1, // 6: product.ProductService.GetProduct:output_type -> product.GetProductResponse
+	3, // 7: product.ProductService.GetStock:output_type -> product.GetStockResponse
+	5, // 8: product.ProductService.WatchProductStock:output_type -> product.WatchProductStockResponse
+	7, // 9: product.ProductService.RestoreStock:output_type -> product.RestoreStockResponse
+	9, // 10: product.ProductService.ConsumeStockDeductEvent:output_type -> product.ConsumeStockDeductEventResponse
+	9, // 11: product.ProductService.ConsumeRestockDeductEvent:output_type -> product.ConsumeStockDeductEventResponse
+	6, // [6:12] is the sub-list for method output_type
+	0, // [0:6] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -403,7 +657,7 @@ func file_proto_product_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_product_proto_rawDesc), len(file_proto_product_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

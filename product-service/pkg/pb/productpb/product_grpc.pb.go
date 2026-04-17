@@ -19,9 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ProductService_GetProduct_FullMethodName        = "/product.ProductService/GetProduct"
-	ProductService_GetStock_FullMethodName          = "/product.ProductService/GetStock"
-	ProductService_WatchProductStock_FullMethodName = "/product.ProductService/WatchProductStock"
+	ProductService_GetProduct_FullMethodName                = "/product.ProductService/GetProduct"
+	ProductService_GetStock_FullMethodName                  = "/product.ProductService/GetStock"
+	ProductService_WatchProductStock_FullMethodName         = "/product.ProductService/WatchProductStock"
+	ProductService_RestoreStock_FullMethodName              = "/product.ProductService/RestoreStock"
+	ProductService_ConsumeStockDeductEvent_FullMethodName   = "/product.ProductService/ConsumeStockDeductEvent"
+	ProductService_ConsumeRestockDeductEvent_FullMethodName = "/product.ProductService/ConsumeRestockDeductEvent"
 )
 
 // ProductServiceClient is the client API for ProductService service.
@@ -31,6 +34,9 @@ type ProductServiceClient interface {
 	GetProduct(ctx context.Context, in *GetProductRequest, opts ...grpc.CallOption) (*GetProductResponse, error)
 	GetStock(ctx context.Context, in *GetStockRequest, opts ...grpc.CallOption) (*GetStockResponse, error)
 	WatchProductStock(ctx context.Context, in *WatchProductStockRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchProductStockResponse], error)
+	RestoreStock(ctx context.Context, in *RestoreStockRequest, opts ...grpc.CallOption) (*RestoreStockResponse, error)
+	ConsumeStockDeductEvent(ctx context.Context, in *ConsumeStockDeductEventRequest, opts ...grpc.CallOption) (*ConsumeStockDeductEventResponse, error)
+	ConsumeRestockDeductEvent(ctx context.Context, in *ConsumeStockDeductEventRequest, opts ...grpc.CallOption) (*ConsumeStockDeductEventResponse, error)
 }
 
 type productServiceClient struct {
@@ -80,6 +86,36 @@ func (c *productServiceClient) WatchProductStock(ctx context.Context, in *WatchP
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ProductService_WatchProductStockClient = grpc.ServerStreamingClient[WatchProductStockResponse]
 
+func (c *productServiceClient) RestoreStock(ctx context.Context, in *RestoreStockRequest, opts ...grpc.CallOption) (*RestoreStockResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RestoreStockResponse)
+	err := c.cc.Invoke(ctx, ProductService_RestoreStock_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *productServiceClient) ConsumeStockDeductEvent(ctx context.Context, in *ConsumeStockDeductEventRequest, opts ...grpc.CallOption) (*ConsumeStockDeductEventResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConsumeStockDeductEventResponse)
+	err := c.cc.Invoke(ctx, ProductService_ConsumeStockDeductEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *productServiceClient) ConsumeRestockDeductEvent(ctx context.Context, in *ConsumeStockDeductEventRequest, opts ...grpc.CallOption) (*ConsumeStockDeductEventResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConsumeStockDeductEventResponse)
+	err := c.cc.Invoke(ctx, ProductService_ConsumeRestockDeductEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ProductServiceServer is the server API for ProductService service.
 // All implementations must embed UnimplementedProductServiceServer
 // for forward compatibility.
@@ -87,6 +123,9 @@ type ProductServiceServer interface {
 	GetProduct(context.Context, *GetProductRequest) (*GetProductResponse, error)
 	GetStock(context.Context, *GetStockRequest) (*GetStockResponse, error)
 	WatchProductStock(*WatchProductStockRequest, grpc.ServerStreamingServer[WatchProductStockResponse]) error
+	RestoreStock(context.Context, *RestoreStockRequest) (*RestoreStockResponse, error)
+	ConsumeStockDeductEvent(context.Context, *ConsumeStockDeductEventRequest) (*ConsumeStockDeductEventResponse, error)
+	ConsumeRestockDeductEvent(context.Context, *ConsumeStockDeductEventRequest) (*ConsumeStockDeductEventResponse, error)
 	mustEmbedUnimplementedProductServiceServer()
 }
 
@@ -105,6 +144,15 @@ func (UnimplementedProductServiceServer) GetStock(context.Context, *GetStockRequ
 }
 func (UnimplementedProductServiceServer) WatchProductStock(*WatchProductStockRequest, grpc.ServerStreamingServer[WatchProductStockResponse]) error {
 	return status.Error(codes.Unimplemented, "method WatchProductStock not implemented")
+}
+func (UnimplementedProductServiceServer) RestoreStock(context.Context, *RestoreStockRequest) (*RestoreStockResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RestoreStock not implemented")
+}
+func (UnimplementedProductServiceServer) ConsumeStockDeductEvent(context.Context, *ConsumeStockDeductEventRequest) (*ConsumeStockDeductEventResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ConsumeStockDeductEvent not implemented")
+}
+func (UnimplementedProductServiceServer) ConsumeRestockDeductEvent(context.Context, *ConsumeStockDeductEventRequest) (*ConsumeStockDeductEventResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ConsumeRestockDeductEvent not implemented")
 }
 func (UnimplementedProductServiceServer) mustEmbedUnimplementedProductServiceServer() {}
 func (UnimplementedProductServiceServer) testEmbeddedByValue()                        {}
@@ -174,6 +222,60 @@ func _ProductService_WatchProductStock_Handler(srv interface{}, stream grpc.Serv
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ProductService_WatchProductStockServer = grpc.ServerStreamingServer[WatchProductStockResponse]
 
+func _ProductService_RestoreStock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RestoreStockRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProductServiceServer).RestoreStock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProductService_RestoreStock_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProductServiceServer).RestoreStock(ctx, req.(*RestoreStockRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ProductService_ConsumeStockDeductEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConsumeStockDeductEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProductServiceServer).ConsumeStockDeductEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProductService_ConsumeStockDeductEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProductServiceServer).ConsumeStockDeductEvent(ctx, req.(*ConsumeStockDeductEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ProductService_ConsumeRestockDeductEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConsumeStockDeductEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProductServiceServer).ConsumeRestockDeductEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProductService_ConsumeRestockDeductEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProductServiceServer).ConsumeRestockDeductEvent(ctx, req.(*ConsumeStockDeductEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ProductService_ServiceDesc is the grpc.ServiceDesc for ProductService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -188,6 +290,18 @@ var ProductService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetStock",
 			Handler:    _ProductService_GetStock_Handler,
+		},
+		{
+			MethodName: "RestoreStock",
+			Handler:    _ProductService_RestoreStock_Handler,
+		},
+		{
+			MethodName: "ConsumeStockDeductEvent",
+			Handler:    _ProductService_ConsumeStockDeductEvent_Handler,
+		},
+		{
+			MethodName: "ConsumeRestockDeductEvent",
+			Handler:    _ProductService_ConsumeRestockDeductEvent_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

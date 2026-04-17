@@ -7,18 +7,20 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"os/signal"
 	"product-service/internal/bootstrap"
+	"product-service/internal/client/productclient"
 	"product-service/internal/config"
 	"product-service/internal/registry"
-	"product-service/pkg/db"
+	"product-service/pkg/grpcx"
 	"product-service/pkg/logger"
 	"product-service/pkg/redis"
 	"product-service/pkg/rediskeys"
 	"product-service/pkg/stream"
 	"product-service/services/order/domain"
-	"product-service/services/product/repository/mysql"
 	"strconv"
 	"syscall"
 )
@@ -30,19 +32,30 @@ func main() {
 	logger.InitFromEnv("product-worker")
 	defer logger.Sync()
 	cfg := bootstrap.BaseInit()
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		cfg.DB.DBUser,
-		cfg.DB.DBPass,
-		cfg.DB.DBHost,
-		cfg.DB.DBPort,
-		cfg.DB.DBName,
+	// 连接到 gRPC 服务端
+	conn, err := grpc.Dial(
+		cfg.App.Product.GrpcAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(grpcx.UnaryClientLoggingInterceptor()),
+		grpc.WithStreamInterceptor(grpcx.StreamClientLoggingInterceptor()),
 	)
-	mySQL := db.InitMySQL(dsn)
+	if err != nil {
+		logger.L().Fatal("连接 gRPC 服务失败", zap.Error(err))
+	}
+	defer func(conn *grpc.ClientConn) {
+		err = conn.Close()
+		if err != nil {
+			logger.L().Error("关闭 gRPC 连接失败", zap.Error(err))
+		}
+	}(conn)
+
+	productClient := productclient.NewGRPCClient(conn)
+
 	redis.InitRedis(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
 	consumer := stream.NewProductEventConsumer(redis.Client, "product-consumer")
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	err := consumer.InitGroup(ctx)
+	err = consumer.InitGroup(ctx)
 	if err != nil {
 		logger.L().Error("init group error", zap.Error(err))
 		return
@@ -72,7 +85,6 @@ func main() {
 	}()*/
 
 	// 初始化商品服务
-	productRepo := mysql.NewProductRepository(mySQL)
 	go consumer.Consume(ctx, func(ctx context.Context, msg redis2.XMessage) error {
 		// ctx2 := extractCtx(ctx, msg.Values)
 		// ctx2, span := otel.Tracer("worker").Start(ctx2, "stream.consume")
@@ -81,9 +93,9 @@ func main() {
 		eventType, _ := msg.Values["event_type"].(string)
 		logger.L().Info("收到商品事件", zap.String("event_type", eventType))
 		if eventType == domain.ProductEventTypeStockDeducted {
-			return stockStockDeducted(ctx, msg, productRepo)
+			return stockStockDeducted(ctx, msg, productClient)
 		} else if eventType == domain.ProductEventTypeRestockDeducted {
-			return restockStockDeducted(ctx, msg, productRepo)
+			return restockStockDeducted(ctx, msg, productClient)
 		}
 		logger.L().Warn("未知商品事件", zap.String("event_type", eventType))
 		return nil
@@ -105,7 +117,7 @@ func main() {
 }
 
 // 商品库存扣减
-func stockStockDeducted(ctx context.Context, msg redis2.XMessage, productRepo *mysql.ProductRepository) error {
+func stockStockDeducted(ctx context.Context, msg redis2.XMessage, productClient productclient.Client) error {
 	productID, err := toInt64(msg.Values["product_id"])
 	if err != nil {
 		return err
@@ -120,11 +132,11 @@ func stockStockDeducted(ctx context.Context, msg redis2.XMessage, productRepo *m
 	}
 	log.Printf("收到商品库存扣减事件：product_id=%d, count=%d, user_id=%d", productID, count, userId)
 	// 幂等 + 扣库存（事务内）
-	return productRepo.ConsumeStockDeductEvent(ctx, rediskeys.ProductStreamKey, msg.ID, productID, count, domain.ProductEventTypeStockDeducted)
+	return productClient.ConsumeStockDeductEvent(ctx, rediskeys.ProductStreamKey, msg.ID, productID, count, domain.ProductEventTypeStockDeducted)
 }
 
 // 恢复库存
-func restockStockDeducted(ctx context.Context, msg redis2.XMessage, productRepo *mysql.ProductRepository) error {
+func restockStockDeducted(ctx context.Context, msg redis2.XMessage, productClient productclient.Client) error {
 	productID, err := toInt64(msg.Values["product_id"])
 	if err != nil {
 		return err
@@ -135,7 +147,7 @@ func restockStockDeducted(ctx context.Context, msg redis2.XMessage, productRepo 
 	}
 	log.Printf("收到恢复商品库存事件：product_id=%d, count=%d", productID, count)
 	// 幂等 + 扣库存（事务内）
-	return productRepo.ConsumeRestockDeductEvent(ctx, rediskeys.ProductStreamKey, msg.ID, productID, count, domain.ProductEventTypeRestockDeducted)
+	return productClient.ConsumeRestockDeductEvent(ctx, rediskeys.ProductStreamKey, msg.ID, productID, count, domain.ProductEventTypeRestockDeducted)
 }
 
 func extractCtx(ctx context.Context, values map[string]any) context.Context {

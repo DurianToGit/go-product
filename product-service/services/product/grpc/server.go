@@ -2,6 +2,8 @@ package grpc
 
 import (
 	"context"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"time"
 
 	"product-service/pkg/grpcx"
@@ -91,4 +93,28 @@ func (s *Server) WatchProductStock(req *productpb.WatchProductStockRequest, stre
 	}
 
 	return nil
+}
+
+func (s *Server) RestoreStock(ctx context.Context, req *productpb.RestoreStockRequest) (*productpb.RestoreStockResponse, error) {
+	err := s.svc.RestoreStock(ctx, req.ProductId, req.Count, req.Source)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "restore stock failed: %v", err)
+	}
+	return &productpb.RestoreStockResponse{Success: true}, nil
+}
+
+func (s *Server) ConsumeStockDeductEvent(ctx context.Context, req *productpb.ConsumeStockDeductEventRequest) (*productpb.ConsumeStockDeductEventResponse, error) {
+	err := s.svc.ConsumeStockDeductEvent(ctx, req.Stream, req.MsgId, req.ProductId, req.Count, req.EventType)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "consume stock deduct event failed: %v", err)
+	}
+	return &productpb.ConsumeStockDeductEventResponse{Success: true}, nil
+}
+
+func (s *Server) ConsumeRestockDeductEvent(ctx context.Context, req *productpb.ConsumeStockDeductEventRequest) (*productpb.ConsumeStockDeductEventResponse, error) {
+	err := s.svc.ConsumeRestockDeductEvent(ctx, req.Stream, req.MsgId, req.ProductId, req.Count, req.EventType)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "consume restock deduct event failed: %v", err)
+	}
+	return &productpb.ConsumeStockDeductEventResponse{Success: true}, nil
 }
