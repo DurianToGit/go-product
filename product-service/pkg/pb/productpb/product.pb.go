@@ -431,8 +431,8 @@ func (x *RestoreStockResponse) GetSuccess() bool {
 
 type ConsumeStockDeductEventRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Stream        string                 `protobuf:"bytes,1,opt,name=stream,proto3" json:"stream,omitempty"`
-	MsgId         string                 `protobuf:"bytes,2,opt,name=msg_id,json=msgId,proto3" json:"msg_id,omitempty"`
+	EventSource   string                 `protobuf:"bytes,1,opt,name=event_source,json=eventSource,proto3" json:"event_source,omitempty"`
+	EventId       string                 `protobuf:"bytes,2,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
 	ProductId     int64                  `protobuf:"varint,3,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	Count         int64                  `protobuf:"varint,4,opt,name=count,proto3" json:"count,omitempty"`
 	EventType     string                 `protobuf:"bytes,5,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
@@ -470,16 +470,16 @@ func (*ConsumeStockDeductEventRequest) Descriptor() ([]byte, []int) {
 	return file_proto_product_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *ConsumeStockDeductEventRequest) GetStream() string {
+func (x *ConsumeStockDeductEventRequest) GetEventSource() string {
 	if x != nil {
-		return x.Stream
+		return x.EventSource
 	}
 	return ""
 }
 
-func (x *ConsumeStockDeductEventRequest) GetMsgId() string {
+func (x *ConsumeStockDeductEventRequest) GetEventId() string {
 	if x != nil {
-		return x.MsgId
+		return x.EventId
 	}
 	return ""
 }
@@ -581,10 +581,10 @@ const file_proto_product_proto_rawDesc = "" +
 	"\x05count\x18\x02 \x01(\x03R\x05count\x12\x16\n" +
 	"\x06source\x18\x03 \x01(\tR\x06source\"0\n" +
 	"\x14RestoreStockResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xa3\x01\n" +
-	"\x1eConsumeStockDeductEventRequest\x12\x16\n" +
-	"\x06stream\x18\x01 \x01(\tR\x06stream\x12\x15\n" +
-	"\x06msg_id\x18\x02 \x01(\tR\x05msgId\x12\x1d\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xb2\x01\n" +
+	"\x1eConsumeStockDeductEventRequest\x12!\n" +
+	"\fevent_source\x18\x01 \x01(\tR\veventSource\x12\x19\n" +
+	"\bevent_id\x18\x02 \x01(\tR\aeventId\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x03 \x01(\x03R\tproductId\x12\x14\n" +
 	"\x05count\x18\x04 \x01(\x03R\x05count\x12\x1d\n" +

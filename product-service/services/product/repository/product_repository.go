@@ -13,7 +13,7 @@ type ProductRepository interface {
 	DeductStock(ctx context.Context, productID int64, count int64) error
 	DeductStockOptimistic(ctx context.Context, productID int64, count int64) (bool, error)
 	DeductStockAtomic(ctx context.Context, productID int64, count int64) (bool, error)
-	ConsumeStockDeductEvent(ctx context.Context, stream, msgID string, productID, count int64, eventType string) error
-	ConsumeRestockDeductEvent(ctx context.Context, stream, msgID string, productID, count int64, eventType string) error
+	ConsumeStockDeductEvent(ctx context.Context, eventSource, eventID string, productID, count int64, eventType string) error
+	ConsumeRestockDeductEvent(ctx context.Context, eventSource, eventID string, productID, count int64, eventType string) error
 	RestoreStock(ctx context.Context, productID int64, count int64) error
 }

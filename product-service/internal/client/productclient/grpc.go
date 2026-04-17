@@ -70,34 +70,34 @@ func (r *GRPCClient) RestoreStock(ctx context.Context, productID int64, count in
 	return nil
 }
 
-func (c *GRPCClient) ConsumeStockDeductEvent(ctx context.Context, stream, msgID string, productID int64, count int64, event_type string) error {
+func (c *GRPCClient) ConsumeStockDeductEvent(ctx context.Context, eventSource, eventID string, productID int64, count int64, event_type string) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	resp, err := c.client.ConsumeStockDeductEvent(ctx, &productpb.ConsumeStockDeductEventRequest{
-		Stream:    stream,
-		MsgId:     msgID,
-		ProductId: productID,
-		Count:     count,
-		EventType: event_type,
+		EventSource: eventSource,
+		EventId:     eventID,
+		ProductId:   productID,
+		Count:       count,
+		EventType:   event_type,
 	})
 	if err != nil {
 		return err
 	}
 	if !resp.Success {
-		return errno.ProductErrConsumeRestockDeductEventFailed
+		return errno.ProductErrConsumeStockDeductEventFailed
 	}
 	return nil
 }
 
-func (c *GRPCClient) ConsumeRestockDeductEvent(ctx context.Context, stream, msgID string, productID int64, count int64, event_type string) error {
+func (c *GRPCClient) ConsumeRestockDeductEvent(ctx context.Context, eventSource, eventID string, productID int64, count int64, event_type string) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	resp, err := c.client.ConsumeRestockDeductEvent(ctx, &productpb.ConsumeStockDeductEventRequest{
-		Stream:    stream,
-		MsgId:     msgID,
-		ProductId: productID,
-		Count:     count,
-		EventType: event_type,
+		EventSource: eventSource,
+		EventId:     eventID,
+		ProductId:   productID,
+		Count:       count,
+		EventType:   event_type,
 	})
 	if err != nil {
 		return err

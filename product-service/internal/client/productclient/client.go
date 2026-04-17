@@ -13,6 +13,6 @@ type Client interface {
 	GetProduct(ctx context.Context, productID int64) (*Product, error)
 	GetStock(ctx context.Context, productID int64) (int64, error)
 	RestoreStock(ctx context.Context, productID int64, count int64, source string) error
-	ConsumeStockDeductEvent(ctx context.Context, streamID string, eventID string, productID int64, count int64, eventType string) error
-	ConsumeRestockDeductEvent(ctx context.Context, streamID string, eventID string, productID int64, count int64, eventType string) error
+	ConsumeStockDeductEvent(ctx context.Context, eventSource, eventID string, productID int64, count int64, eventType string) error
+	ConsumeRestockDeductEvent(ctx context.Context, eventSource, eventID string, productID int64, count int64, eventType string) error
 }

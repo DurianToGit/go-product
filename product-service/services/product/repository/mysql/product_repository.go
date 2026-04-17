@@ -210,7 +210,7 @@ func (r *ProductRepository) RestoreStock(ctx context.Context, productID int64, c
 
 func (r *ProductRepository) ConsumeStockDeductEvent(
 	ctx context.Context,
-	stream, msgID string,
+	eventSource, eventID string,
 	productID, count int64,
 	eventType string,
 ) error {
@@ -218,12 +218,12 @@ func (r *ProductRepository) ConsumeStockDeductEvent(
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 1) 幂等记录（先插入）
 		rec := &model.ProductEventConsumedModel{
-			Stream:    stream,
-			MsgID:     msgID,
-			ProductId: productID,
-			Count:     count,
-			EventType: eventType,
-			CreatedAt: time.Now().Unix(),
+			EventSource: eventSource,
+			EventId:     eventID,
+			ProductId:   productID,
+			Count:       count,
+			EventType:   eventType,
+			CreatedAt:   time.Now().Unix(),
 		}
 
 		if err := tx.Create(rec).Error; err != nil {
@@ -253,7 +253,7 @@ func (r *ProductRepository) ConsumeStockDeductEvent(
 
 func (r *ProductRepository) ConsumeRestockDeductEvent(
 	ctx context.Context,
-	stream, msgID string,
+	eventSource, eventID string,
 	productID, count int64,
 	eventType string,
 ) error {
@@ -261,12 +261,12 @@ func (r *ProductRepository) ConsumeRestockDeductEvent(
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 1) 幂等记录（先插入）
 		rec := &model.ProductEventConsumedModel{
-			Stream:    stream,
-			MsgID:     msgID,
-			ProductId: productID,
-			Count:     count,
-			EventType: eventType,
-			CreatedAt: time.Now().Unix(),
+			EventSource: eventSource,
+			EventId:     eventID,
+			ProductId:   productID,
+			Count:       count,
+			EventType:   eventType,
+			CreatedAt:   time.Now().Unix(),
 		}
 
 		if err := tx.Create(rec).Error; err != nil {

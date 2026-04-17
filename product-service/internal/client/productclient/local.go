@@ -9,12 +9,12 @@ type LocalClient struct {
 	svc *productService.ProductService
 }
 
-func (c *LocalClient) ConsumeStockDeductEvent(ctx context.Context, streamID string, eventID string, productID int64, count int64, eventType string) error {
-	return c.svc.ConsumeStockDeductEvent(ctx, streamID, eventID, productID, count, eventType)
+func (c *LocalClient) ConsumeStockDeductEvent(ctx context.Context, eventSource, eventID string, productID int64, count int64, eventType string) error {
+	return c.svc.ConsumeStockDeductEvent(ctx, eventSource, eventID, productID, count, eventType)
 }
 
-func (c *LocalClient) ConsumeRestockDeductEvent(ctx context.Context, streamID string, eventID string, productID int64, count int64, eventType string) error {
-	return c.svc.ConsumeRestockDeductEvent(ctx, streamID, eventID, productID, count, eventType)
+func (c *LocalClient) ConsumeRestockDeductEvent(ctx context.Context, eventSource, eventID string, productID int64, count int64, eventType string) error {
+	return c.svc.ConsumeRestockDeductEvent(ctx, eventSource, eventID, productID, count, eventType)
 }
 
 func (c *LocalClient) RestoreStock(ctx context.Context, productID int64, count int64, source string) error {

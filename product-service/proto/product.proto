@@ -54,8 +54,8 @@ message RestoreStockResponse {
 }
 
 message ConsumeStockDeductEventRequest {
-    string stream = 1;
-    string msg_id = 2;
+    string event_source = 1;
+    string event_id = 2;
     int64 product_id = 3;
     int64 count = 4;
     string event_type = 5;

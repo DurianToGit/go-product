@@ -104,7 +104,7 @@ func (s *Server) RestoreStock(ctx context.Context, req *productpb.RestoreStockRe
 }
 
 func (s *Server) ConsumeStockDeductEvent(ctx context.Context, req *productpb.ConsumeStockDeductEventRequest) (*productpb.ConsumeStockDeductEventResponse, error) {
-	err := s.svc.ConsumeStockDeductEvent(ctx, req.Stream, req.MsgId, req.ProductId, req.Count, req.EventType)
+	err := s.svc.ConsumeStockDeductEvent(ctx, req.EventSource, req.EventId, req.ProductId, req.Count, req.EventType)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "consume stock deduct event failed: %v", err)
 	}
@@ -112,7 +112,7 @@ func (s *Server) ConsumeStockDeductEvent(ctx context.Context, req *productpb.Con
 }
 
 func (s *Server) ConsumeRestockDeductEvent(ctx context.Context, req *productpb.ConsumeStockDeductEventRequest) (*productpb.ConsumeStockDeductEventResponse, error) {
-	err := s.svc.ConsumeRestockDeductEvent(ctx, req.Stream, req.MsgId, req.ProductId, req.Count, req.EventType)
+	err := s.svc.ConsumeRestockDeductEvent(ctx, req.EventSource, req.EventId, req.ProductId, req.Count, req.EventType)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "consume restock deduct event failed: %v", err)
 	}
