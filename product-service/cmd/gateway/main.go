@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"product-service/internal/bootstrap"
 	"product-service/pkg/logger"
+
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -15,19 +19,13 @@ func main() {
 
 	app, err := bootstrap.InitGatewayApp()
 	if err != nil {
-		logger.L().Fatal("init gateway app failed")
+		logger.L().Fatal("init gateway app failed", zap.Error(err))
 	}
-	defer func(app *bootstrap.GatewayApp) {
-		err = app.Close()
-		if err != nil {
-			logger.L().Error("gateway close failed")
-		}
-	}(app)
 
 	logger.L().Info("gateway listening")
 	go func() {
 		if err := app.Serve(); err != nil {
-			logger.L().Error("gateway serve failed")
+			logger.L().Error("gateway serve failed", zap.Error(err))
 		}
 	}()
 
@@ -36,4 +34,11 @@ func main() {
 	<-quit
 
 	logger.L().Info("shutting down gateway")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	if err := app.Close(); err != nil {
+		logger.L().Error("gateway close failed", zap.Error(err))
+	}
+	logger.L().Info("gateway stopped", zap.Error(shutdownCtx.Err()))
 }

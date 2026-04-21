@@ -86,7 +86,6 @@ func InitOrderWorkerApp() (*OrderWorkerApp, error) {
 	var productGrpcConn *grpc.ClientConn
 	var grpcErr error
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 	productGrpcConn, grpcErr = grpc.DialContext(
 		ctx,
 		cfg.App.Product.GrpcAddr,
@@ -94,6 +93,7 @@ func InitOrderWorkerApp() (*OrderWorkerApp, error) {
 		grpc.WithBlock(),
 		grpc.WithUnaryInterceptor(grpcx.UnaryClientLoggingInterceptor()),
 	)
+	cancel()
 	if grpcErr != nil {
 		logger.L().Error("初始化 grpc client 失败", zap.Error(grpcErr))
 		return nil, grpcErr

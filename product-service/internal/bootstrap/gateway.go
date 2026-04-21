@@ -177,21 +177,23 @@ func (a *GatewayApp) Serve() error {
 func (a *GatewayApp) Close() error {
 	var errs []error
 
-	// 关闭 gRPC 连接
+	// 先关闭 HTTP 服务器（优雅等待请求完成）
+	if a.httpServer != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := a.httpServer.Shutdown(ctx); err != nil {
+			logger.L().Error("关闭 HTTP 服务器失败", zap.Error(err))
+			errs = append(errs, err)
+		}
+	}
+
+	// HTTP 关闭后再关闭 gRPC 连接
 	for _, conn := range []*grpc.ClientConn{a.productConn, a.orderConn, a.userConn} {
 		if conn != nil {
 			if err := conn.Close(); err != nil {
 				logger.L().Error("关闭 gRPC 连接失败", zap.Error(err))
 				errs = append(errs, err)
 			}
-		}
-	}
-
-	// 关闭 HTTP 服务器
-	if a.httpServer != nil {
-		if err := a.httpServer.Close(); err != nil {
-			logger.L().Error("closing_server_error", zap.Error(err))
-			errs = append(errs, err)
 		}
 	}
 

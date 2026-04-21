@@ -2,12 +2,6 @@ package bootstrap
 
 import (
 	"fmt"
-	redis2 "github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-	"gorm.io/gorm"
 	"net"
 	"product-service/pkg/db"
 	"product-service/pkg/grpcx"
@@ -17,7 +11,15 @@ import (
 	productRPC "product-service/services/product/grpc"
 	"product-service/services/product/repository"
 	mysqlProduct "product-service/services/product/repository/mysql"
+	modelProduct "product-service/services/product/repository/mysql/model"
 	productService "product-service/services/product/service"
+
+	redis2 "github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"gorm.io/gorm"
 )
 
 type ProductApp struct {
@@ -96,6 +98,11 @@ func InitProductApp() (*ProductApp, error) {
 	healthpb.RegisterHealthServer(grpcServer, hs)
 	hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 
+	_ = mySQL.AutoMigrate(
+		&modelProduct.ProductModel{},
+		&modelProduct.ProductEventConsumedModel{},
+	)
+
 	cleanup = nil
 	return &ProductApp{
 		grpcServer:     grpcServer,
@@ -115,6 +122,8 @@ func (a *ProductApp) Serve() error {
 func (a *ProductApp) Close() error {
 	var errs []error
 	a.grpcServer.GracefulStop()
+	// GracefulStop 已关闭 listener，无需再次关闭
+
 	// 关闭 MySQL 连接
 	if a.mysqlDB != nil {
 		if sqlDB, err := a.mysqlDB.DB(); err == nil {
@@ -123,15 +132,14 @@ func (a *ProductApp) Close() error {
 			}
 		}
 	}
-	err := a.redis.Close()
-	if err != nil {
-		errs = append(errs, err)
+
+	// 关闭 Redis 连接
+	if a.redis != nil {
+		if err := a.redis.Close(); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	err = a.listener.Close()
-	if err != nil {
-		errs = append(errs, err)
-	}
-	// 返回第一个错误（如果有）
+
 	if len(errs) > 0 {
 		return errs[0]
 	}

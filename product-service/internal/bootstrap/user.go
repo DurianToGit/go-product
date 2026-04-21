@@ -2,12 +2,6 @@ package bootstrap
 
 import (
 	"fmt"
-	redis2 "github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-	"gorm.io/gorm"
 	"net"
 	"product-service/pkg/db"
 	"product-service/pkg/grpcx"
@@ -17,7 +11,15 @@ import (
 	usergrpc "product-service/services/user/grpc"
 	userRepository "product-service/services/user/repository"
 	userMysql "product-service/services/user/repository/mysql"
+	modelUser "product-service/services/user/repository/mysql/model"
 	userService "product-service/services/user/service"
+
+	redis2 "github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"gorm.io/gorm"
 )
 
 type UserApp struct {
@@ -94,6 +96,10 @@ func InitUserApp() (*UserApp, error) {
 	healthpb.RegisterHealthServer(grpcServer, hs)
 	hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 
+	_ = mySQL.AutoMigrate(
+		&modelUser.UserModel{},
+	)
+
 	cleanup = nil
 
 	return &UserApp{
@@ -115,6 +121,8 @@ func (a *UserApp) Serve() error {
 func (a *UserApp) Close() error {
 	var errs []error
 	a.grpcServer.GracefulStop()
+	// GracefulStop 已关闭 listener，无需再次关闭
+
 	// 关闭 MySQL 连接
 	if a.mysqlDB != nil {
 		if sqlDB, err := a.mysqlDB.DB(); err == nil {
@@ -123,13 +131,16 @@ func (a *UserApp) Close() error {
 			}
 		}
 	}
-	err := a.redis.Close()
-	if err != nil {
-		errs = append(errs, err)
+
+	// 关闭 Redis 连接
+	if a.redis != nil {
+		if err := a.redis.Close(); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	err = a.listener.Close()
-	if err != nil {
-		errs = append(errs, err)
+
+	if len(errs) > 0 {
+		return errs[0]
 	}
 	return nil
 }

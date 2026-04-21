@@ -6,7 +6,7 @@ services:
     container_name: go-mysql
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: go_product
+      MYSQL_DATABASE: product_db
     ports:
       - "3306:3306"
 
@@ -43,13 +43,13 @@ services:
       - redis
     environment:
       ENV: prod
-      PRODUCT_GRPC_ADDR: ":9002"
+      PRODUCT_GRPC_ADDR: ":9001"
       PRODUCT_GRPC: "true"
       DB_USER: root
       DB_PASS: root
       DB_HOST: mysql
       DB_PORT: "3306"
-      DB_NAME: go_product
+      DB_NAME: product_db
       REDIS_ADDR: redis:6379
 
   order-api:
@@ -63,13 +63,13 @@ services:
       - product-api
     environment:
       ENV: prod
-      ORDER_GRPC_ADDR: ":9003"
-      PRODUCT_GRPC_ADDR: product-api:9002
+      ORDER_GRPC_ADDR: ":9002"
+      PRODUCT_GRPC_ADDR: product-api:9001
       DB_USER: root
       DB_PASS: root
       DB_HOST: mysql
       DB_PORT: "3306"
-      DB_NAME: go_product
+      DB_NAME: product_db
       REDIS_ADDR: redis:6379
       KAFKA_ADDR: kafka:9092
 
@@ -79,14 +79,16 @@ services:
       dockerfile: deployments/docker/user-api.Dockerfile
     depends_on:
       - mysql
+      - redis
     environment:
       ENV: prod
-      USER_GRPC_ADDR: ":9001"
+      USER_GRPC_ADDR: ":9003"
       DB_USER: root
       DB_PASS: root
       DB_HOST: mysql
       DB_PORT: "3306"
-      DB_NAME: go_product
+      DB_NAME: product_db
+      REDIS_ADDR: redis:6379
 
   gateway:
     build:
@@ -101,9 +103,9 @@ services:
     environment:
       ENV: prod
       ADDR: ":8080"
-      PRODUCT_GRPC_ADDR: product-api:9002
-      ORDER_GRPC_ADDR: order-api:9003
-      USER_GRPC_ADDR: user-api:9001
+      PRODUCT_GRPC_ADDR: product-api:9001
+      ORDER_GRPC_ADDR: order-api:9002
+      USER_GRPC_ADDR: user-api:9003
 
   order-worker:
     build:
@@ -111,6 +113,7 @@ services:
       dockerfile: deployments/docker/order-worker.Dockerfile
     depends_on:
       - mysql
+      - redis
       - kafka
       - product-api
     environment:
@@ -119,6 +122,7 @@ services:
       DB_PASS: root
       DB_HOST: mysql
       DB_PORT: "3306"
-      DB_NAME: go_product
+      DB_NAME: product_db
+      REDIS_ADDR: redis:6379
       KAFKA_ADDR: kafka:9092
-      PRODUCT_GRPC_ADDR: product-api:9002
+      PRODUCT_GRPC_ADDR: product-api:9001

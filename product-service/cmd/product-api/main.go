@@ -1,13 +1,16 @@
 package main
 
 import (
-	"go.uber.org/zap"
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"product-service/internal/bootstrap"
 	"product-service/pkg/logger"
+
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -16,14 +19,8 @@ func main() {
 
 	app, err := bootstrap.InitProductApp()
 	if err != nil {
-		logger.L().Fatal("init product app failed")
+		logger.L().Fatal("init product app failed", zap.Error(err))
 	}
-	defer func(app *bootstrap.ProductApp) {
-		err = app.Close()
-		if err != nil {
-			logger.L().Error("close product app failed", zap.Error(err))
-		}
-	}(app)
 
 	logger.L().Info("product-api started")
 
@@ -38,4 +35,11 @@ func main() {
 	<-quit
 
 	logger.L().Info("shutting down product-api")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	if err := app.Close(); err != nil {
+		logger.L().Error("close product app failed", zap.Error(err))
+	}
+	logger.L().Info("product-api stopped", zap.Error(shutdownCtx.Err()))
 }

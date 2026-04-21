@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/rand"
 	"product-service/internal/client/orderclient"
 	"product-service/internal/client/productclient"
 	"product-service/internal/client/userclient"
@@ -111,8 +110,6 @@ func BaseInit() *config.Config {
 	_ = godotenv.Load()
 	// 初始化验证器
 	validator.Init()
-	// 初始化随机数 不然rand的值会重复
-	rand.Seed(time.Now().UnixNano())
 	// 加载配置
 	cfg := config.Load()
 

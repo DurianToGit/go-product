@@ -3,13 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	redis2 "github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/health"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-	"gorm.io/gorm"
 	"net"
 	"product-service/internal/client/productclient"
 	"product-service/pkg/db"
@@ -20,8 +13,17 @@ import (
 	ordergrpc "product-service/services/order/grpc"
 	orderRepository "product-service/services/order/repository"
 	orderMysql "product-service/services/order/repository/mysql"
+	modelOrder "product-service/services/order/repository/mysql/model"
 	orderService "product-service/services/order/service"
 	"time"
+
+	redis2 "github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"gorm.io/gorm"
 )
 
 type OrderApp struct {
@@ -82,7 +84,6 @@ func InitOrderApp() (*OrderApp, error) {
 	var grpcErr error
 	// 使用 WithBlock() 阻塞直到连接建立，WithTimeout() 设置超时
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 	productGrpcConn, grpcErr = grpc.DialContext(
 		ctx,
 		cfg.App.Product.GrpcAddr,
@@ -90,6 +91,7 @@ func InitOrderApp() (*OrderApp, error) {
 		grpc.WithBlock(),
 		grpc.WithUnaryInterceptor(grpcx.UnaryClientLoggingInterceptor()),
 	)
+	cancel()
 	if grpcErr != nil {
 		logger.L().Error("初始化 grpc client 失败", zap.Error(grpcErr))
 		return nil, grpcErr
@@ -99,6 +101,12 @@ func InitOrderApp() (*OrderApp, error) {
 			logger.L().Error("关闭 gRPC 连接失败", zap.Error(err))
 		}
 	})
+
+	_ = mySQL.AutoMigrate(
+		&modelOrder.OrderModel{},
+		&modelOrder.OutboxEventModel{},
+		&modelOrder.EventConsumeLog{},
+	)
 
 	orderRepo := orderMysql.NewOrderRepository(mySQL)
 	outboxRepo := orderMysql.NewOutboxRepository(mySQL)
@@ -155,6 +163,15 @@ func (a *OrderApp) Serve() error {
 func (a *OrderApp) Close() error {
 	var errs []error
 	a.grpcServer.GracefulStop()
+	// GracefulStop 已关闭 listener，无需再次关闭
+
+	// 关闭 gRPC 客户端连接
+	if a.productConn != nil {
+		if err := a.productConn.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
 	// 关闭 MySQL 连接
 	if a.mysqlDB != nil {
 		if sqlDB, err := a.mysqlDB.DB(); err == nil {
@@ -163,21 +180,14 @@ func (a *OrderApp) Close() error {
 			}
 		}
 	}
-	err := a.redis.Close()
-	if err != nil {
-		errs = append(errs, err)
-	}
-	err = a.listener.Close()
-	if err != nil {
-		errs = append(errs, err)
-	}
-	if a.productConn != nil {
-		err = a.productConn.Close()
-		if err != nil {
+
+	// 关闭 Redis 连接
+	if a.redis != nil {
+		if err := a.redis.Close(); err != nil {
 			errs = append(errs, err)
 		}
 	}
-	// 返回第一个错误（如果有）
+
 	if len(errs) > 0 {
 		return errs[0]
 	}

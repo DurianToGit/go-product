@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+
+# Qoder
+.qoder
+
+# Temp files
+.tmp.drivedownload
+.tmp.driveupload
+
+# Documentation
+*.md
+LICENSE
+
+# Environment files (will be provided via docker-compose)
+.env
+
+# Build artifacts
+product-service/bin
+
+# OS files
+.DS_Store
+Thumbs.db
