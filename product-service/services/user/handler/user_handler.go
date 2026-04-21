@@ -3,17 +3,11 @@ package handler
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	"product-service/internal/errno"
-	"product-service/pkg/auth"
-	"product-service/pkg/logger"
-	"product-service/pkg/redis"
-	"product-service/pkg/rediskeys"
 	"product-service/pkg/response"
 	"product-service/pkg/utils"
 	"product-service/services/user/service"
 	"strconv"
-	"time"
 )
 
 type UserHandler struct {
@@ -69,7 +63,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	if !utils.BindAndValidateByJSON(c, &req) {
 		return
 	}
-	user, err := h.svc.Login(c, req.Username, req.Password)
+	token, err := h.svc.Login(c, req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, errno.UsernameNotFound) {
 			response.ErrorWithErrno(c, errno.UsernameNotFound)
@@ -81,24 +75,6 @@ func (h *UserHandler) Login(c *gin.Context) {
 		}
 		response.ErrorWithErrno(c, errno.ServerError)
 		return
-	}
-	token, err := auth.GenerateToken(user.ID)
-	if err != nil {
-		response.ErrorWithErrno(c, errno.ServerError)
-		return
-	}
-	key := rediskeys.DailyLoginKey(time.Now().Format("20060102"))
-	errD := redis.Do(c, func() error {
-		return redis.Client.SAdd(c, key, user.ID).Err()
-	})
-	if errD != nil {
-		logger.L().Error("redis error", zap.Error(errD))
-	}
-	errE := redis.Do(c, func() error {
-		return redis.Client.Expire(c, key, 48*time.Hour).Err()
-	})
-	if errE != nil {
-		logger.L().Error("redis error", zap.Error(errE))
 	}
 	response.Success(c, gin.H{
 		"token": token,

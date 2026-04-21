@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"product-service/internal/client/orderclient"
 	"product-service/internal/client/productclient"
+	"product-service/internal/client/userclient"
 	"product-service/internal/config"
+	"product-service/internal/gateway/ordergateway"
 	"product-service/internal/gateway/productgateway"
+	"product-service/internal/gateway/usergateway"
 	"product-service/internal/validator"
 	"product-service/pkg/breaker"
 	"product-service/pkg/configwatch"
@@ -43,6 +47,8 @@ type App struct {
 	UserHandler           *handlerUser.UserHandler
 	ProductHandler        *handlerProduct.ProductHandler
 	ProductGatewayHandler *productgateway.Handler
+	OrderGatewayHandler   *ordergateway.Handler
+	UserGatewayHandler    *usergateway.Handler
 	OrderHandler          *handlerOrder.OrderHandler
 
 	MysqlClient  *gorm.DB
@@ -135,6 +141,7 @@ func InitApp() (*App, error) {
 			return
 		}
 		config.Reload()
+		cfg = config.Get()
 		logger.L().Info("config reloaded", zap.Any("config", config.Get()))
 	})
 	if err != nil {
@@ -144,8 +151,8 @@ func InitApp() (*App, error) {
 
 	// 初始化 gRPC 连接
 	var grpcConn *grpc.ClientConn
+	var grpcErr error
 	if cfg.App.Product.Grpc {
-		var grpcErr error
 		// 使用 WithBlock() 阻塞直到连接建立，WithTimeout() 设置超时
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -256,6 +263,58 @@ func InitApp() (*App, error) {
 		productClient = productclient.NewLocalClient(productService)
 	}
 
+	// 初始化订单 gRPC 连接和 gateway handler
+	var orderGrpcConn *grpc.ClientConn
+	var orderGatewayHandler *ordergateway.Handler
+	if cfg.App.Order.Grpc {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		orderGrpcConn, grpcErr = grpc.DialContext(
+			ctx,
+			cfg.App.Order.GrpcAddr,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithBlock(),
+			grpc.WithUnaryInterceptor(grpcx.UnaryClientLoggingInterceptor()),
+		)
+		cancel()
+		if grpcErr != nil {
+			logger.L().Error("初始化 order grpc client 失败", zap.Error(grpcErr))
+			return nil, grpcErr
+		}
+		cleanup = append(cleanup, func() {
+			if err := orderGrpcConn.Close(); err != nil {
+				logger.L().Error("关闭 order gRPC 连接失败", zap.Error(err))
+			}
+		})
+		orderClient := orderclient.NewGRPCClient(orderGrpcConn)
+		orderGatewayHandler = ordergateway.NewHandler(orderClient)
+	}
+
+	// 初始化用户 gRPC 连接和 gateway handler
+	var userGrpcConn *grpc.ClientConn
+	var userGatewayHandler *usergateway.Handler
+	if cfg.App.User.Grpc {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		userGrpcConn, grpcErr = grpc.DialContext(
+			ctx,
+			cfg.App.User.GrpcAddr,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithBlock(),
+			grpc.WithUnaryInterceptor(grpcx.UnaryClientLoggingInterceptor()),
+		)
+		cancel()
+		if grpcErr != nil {
+			logger.L().Error("初始化 user grpc client 失败", zap.Error(grpcErr))
+			return nil, grpcErr
+		}
+		cleanup = append(cleanup, func() {
+			if err := userGrpcConn.Close(); err != nil {
+				logger.L().Error("关闭 user gRPC 连接失败", zap.Error(err))
+			}
+		})
+		userClient := userclient.NewGRPCClient(userGrpcConn)
+		userGatewayHandler = usergateway.NewHandler(userClient)
+	}
+
 	// 初始化订单服务
 	orderRepo := mysqlOrder.NewOrderRepository(mySQL)
 	outboxRepo := mysqlOrder.NewOutboxRepository(mySQL)
@@ -270,6 +329,8 @@ func InitApp() (*App, error) {
 		UserHandler:           userHandler,
 		ProductHandler:        productHandler,
 		ProductGatewayHandler: productGatewayHandler,
+		OrderGatewayHandler:   orderGatewayHandler,
+		UserGatewayHandler:    userGatewayHandler,
 		OrderHandler:          orderHandler,
 		MysqlClient:           mySQL,
 		RedisClient:           rdb,

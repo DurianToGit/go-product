@@ -3,7 +3,6 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 	"product-service/internal/bootstrap"
-	"product-service/internal/gateway/productgateway"
 	"product-service/internal/middleware"
 	"product-service/pkg/health"
 	"product-service/pkg/ratelimit"
@@ -41,13 +40,13 @@ func Register(r *gin.Engine, app *bootstrap.App) {
 	{
 		userRouter.InitAuthRouter(authGroup, app.UserHandler)
 	}
-	if app.ProductGatewayHandler != nil {
-		gateway := api.Group("/gateway")
-		gateway.Use(middleware.Auth())
-		{
-			productgateway.InitRouter(gateway, app.ProductGatewayHandler)
-		}
-	}
+	// if app.ProductGatewayHandler != nil {
+	// 	gateway := api.Group("/gateway")
+	// 	gateway.Use(middleware.Auth())
+	// 	{
+	// 		productgateway.InitRouter(gateway, app.ProductGatewayHandler)
+	// 	}
+	// }
 
 	// 需要登录的业务路由
 	biz := api.Group("")

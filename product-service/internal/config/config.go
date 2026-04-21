@@ -16,12 +16,23 @@ type Config struct {
 	Kafka Kafka
 }
 
+type Order struct {
+	Grpc     bool
+	GrpcAddr string
+}
+type User struct {
+	Grpc     bool
+	GrpcAddr string
+}
+
 type AppConfig struct {
 	Env         string
 	Addr        string
 	LogLevel    string
 	LogEncoding string
 	Product     Product
+	Order       Order
+	User        User
 }
 
 type DBConfig struct {
@@ -94,6 +105,16 @@ func loadFromEnv() *Config {
 		productGrpc = false
 		logger.L().Warn("PRODUCT_GRPC not set, use default value false")
 	}
+	orderGrpc, err := strconv.ParseBool(os.Getenv("ORDER_GRPC"))
+	if err != nil {
+		orderGrpc = false
+		logger.L().Warn("PRODUCT_GRPC not set, use default value false")
+	}
+	userGrpc, err := strconv.ParseBool(os.Getenv("USER_GRPC"))
+	if err != nil {
+		userGrpc = false
+		logger.L().Warn("PRODUCT_GRPC not set, use default value false")
+	}
 	etcdAddr := getEnvAddrs("ETCD_ADDR")
 	kafkaAddrs := getEnvAddrs("KAFKA_ADDR")
 	return &Config{
@@ -106,6 +127,14 @@ func loadFromEnv() *Config {
 				CacheTTL: productCacheTtl,
 				Grpc:     productGrpc,
 				GrpcAddr: os.Getenv("PRODUCT_GRPC_ADDR"),
+			},
+			Order: Order{
+				Grpc:     orderGrpc,
+				GrpcAddr: os.Getenv("ORDER_GRPC_ADDR"),
+			},
+			User: User{
+				Grpc:     userGrpc,
+				GrpcAddr: os.Getenv("USER_GRPC_ADDR"),
 			},
 		},
 		DB: DBConfig{

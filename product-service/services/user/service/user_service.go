@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 	"math/rand"
 	"product-service/internal/errno"
+	"product-service/pkg/auth"
 	"product-service/pkg/cache"
+	"product-service/pkg/logger"
 	"product-service/pkg/redis"
 	"product-service/pkg/rediskeys"
 	"product-service/services/user/domain"
@@ -41,8 +45,32 @@ func (s *UserService) Register(ctx context.Context, username, password string) (
 	return s.repo.Register(ctx, &user)
 }
 
-func (s *UserService) Login(ctx context.Context, username, password string) (*domain.User, error) {
-	return s.repo.Login(ctx, username, password)
+func (s *UserService) Login(ctx context.Context, username, password string) (string, error) {
+	user, err := s.repo.Login(ctx, username, password)
+	if err != nil {
+		return "", err
+	}
+	token, err := auth.GenerateToken(user.ID)
+	if err != nil {
+		return "", err
+	}
+	key := rediskeys.DailyLoginKey(time.Now().Format("20060102"))
+	errD := redis.Do(ctx, func() error {
+		return redis.Client.SAdd(ctx, key, user.ID).Err()
+	})
+	if errD != nil {
+		logger.L().Error("redis error", zap.Error(errD))
+		return "", fmt.Errorf("redis error, %v", errD)
+	}
+	errE := redis.Do(ctx, func() error {
+		return redis.Client.Expire(ctx, key, 48*time.Hour).Err()
+	})
+	if errE != nil {
+		logger.L().Error("redis error", zap.Error(errE))
+		return "", fmt.Errorf("redis error, %v", errE)
+	}
+
+	return token, nil
 }
 
 func (s *UserService) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
