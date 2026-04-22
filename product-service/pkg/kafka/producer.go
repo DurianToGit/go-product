@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"fmt"
+
 	kafkago "github.com/segmentio/kafka-go"
 )
 
@@ -19,6 +20,16 @@ func InitClient(brokers []string) {
 		},
 	}
 	Client = p.writer
+}
+
+// Dial 验证 Kafka broker 是否可达，超时则返回错误
+func Dial(ctx context.Context, brokers []string) error {
+	cl := &kafkago.Client{Addr: kafkago.TCP(brokers[0])}
+	_, err := cl.Metadata(ctx, &kafkago.MetadataRequest{})
+	if err != nil {
+		return fmt.Errorf("kafka broker %v 不可达: %w", brokers, err)
+	}
+	return nil
 }
 
 func NewProducer(brokers []string, topic string) *Producer {

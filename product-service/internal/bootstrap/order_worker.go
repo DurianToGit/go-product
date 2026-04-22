@@ -104,8 +104,17 @@ func InitOrderWorkerApp() (*OrderWorkerApp, error) {
 		}
 	})
 
-	// 初始化 kafka client
+	// 初始化 kafka client 并校验连接
 	kafka.InitClient(cfg.Kafka.Addr)
+	{
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if err := kafka.Dial(ctx, cfg.Kafka.Addr); err != nil {
+			cancel()
+			logger.L().Error("初始化 kafka 连接失败", zap.Error(err))
+			return nil, fmt.Errorf("kafka 连接校验失败: %w", err)
+		}
+		cancel()
+	}
 
 	orderRepo := orderMysql.NewOrderRepository(mySQL)
 	outboxRepo := orderMysql.NewOutboxRepository(mySQL)

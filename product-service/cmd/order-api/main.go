@@ -37,8 +37,17 @@ func main() {
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
-	if err := app.Close(); err != nil {
-		logger.L().Error("order app close failed", zap.Error(err))
+	done := make(chan struct{})
+	go func() {
+		if err := app.Close(); err != nil {
+			logger.L().Error("order app close failed", zap.Error(err))
+		}
+		close(done)
+	}()
+	select {
+	case <-done:
+		logger.L().Info("order-api stopped gracefully")
+	case <-shutdownCtx.Done():
+		logger.L().Error("order-api shutdown timed out", zap.Error(shutdownCtx.Err()))
 	}
-	logger.L().Info("order-api stopped", zap.Error(shutdownCtx.Err()))
 }

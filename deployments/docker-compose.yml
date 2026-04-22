@@ -36,7 +36,7 @@ services:
 
   product-api:
     build:
-      context: .
+      context: ..
       dockerfile: deployments/docker/product-api.Dockerfile
     depends_on:
       - mysql
@@ -54,7 +54,7 @@ services:
 
   order-api:
     build:
-      context: .
+      context: ..
       dockerfile: deployments/docker/order-api.Dockerfile
     depends_on:
       - mysql
@@ -75,7 +75,7 @@ services:
 
   user-api:
     build:
-      context: .
+      context: ..
       dockerfile: deployments/docker/user-api.Dockerfile
     depends_on:
       - mysql
@@ -92,7 +92,7 @@ services:
 
   gateway:
     build:
-      context: .
+      context: ..
       dockerfile: deployments/docker/gateway.Dockerfile
     depends_on:
       - user-api
@@ -109,7 +109,7 @@ services:
 
   order-worker:
     build:
-      context: .
+      context: ..
       dockerfile: deployments/docker/order-worker.Dockerfile
     depends_on:
       - mysql

@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"net/http"
 	"product-service/internal/client/orderclient"
 	"product-service/internal/client/productclient"
@@ -204,6 +205,9 @@ func (a *GatewayApp) Close() error {
 }
 
 func (a *GatewayApp) RegisterRouter(r *gin.Engine) {
+	// Gateway 健康检查：探测下游 3 个 gRPC 服务
+	r.GET("/health", a.healthCheck)
+
 	api := r.Group("/api/v1")
 
 	usergateway.InitPublicRouter(api, a.userHandler)
@@ -215,5 +219,44 @@ func (a *GatewayApp) RegisterRouter(r *gin.Engine) {
 		ordergateway.InitRouter(biz, a.orderHandler)
 		usergateway.InitRouter(biz, a.userHandler)
 	}
+}
 
+func (a *GatewayApp) healthCheck(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+	defer cancel()
+
+	type svcCheck struct {
+		Name   string `json:"name"`
+		Status string `json:"status"`
+	}
+
+	overallStatus := "ok"
+	checks := make([]svcCheck, 0, 3)
+
+	for name, conn := range map[string]*grpc.ClientConn{
+		"product": a.productConn,
+		"order":   a.orderConn,
+		"user":    a.userConn,
+	} {
+		if conn == nil {
+			checks = append(checks, svcCheck{Name: name, Status: "unavailable"})
+			overallStatus = "degraded"
+			continue
+		}
+		client := healthpb.NewHealthClient(conn)
+		resp, err := client.Check(ctx, &healthpb.HealthCheckRequest{Service: ""})
+		if err != nil || resp.GetStatus() != healthpb.HealthCheckResponse_SERVING {
+			checks = append(checks, svcCheck{Name: name, Status: "unhealthy"})
+			overallStatus = "degraded"
+		} else {
+			checks = append(checks, svcCheck{Name: name, Status: "ok"})
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"service":   "gateway",
+		"status":    overallStatus,
+		"checks":    checks,
+		"timestamp": time.Now().Unix(),
+	})
 }
